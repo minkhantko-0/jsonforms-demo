@@ -36,6 +36,7 @@
   },
   "scripts": {
     "dev": "vite --port 3000",
+    "dev:full": "start cmd /k \"cd server && docker-compose up\" && ping 127.0.0.1 -n 5 > nul && start cmd /k \"cd server && npm run dev\" && npm run dev",
     "build": "tsc && vite build",
     "format": "prettier --write \"**/*.{ts,tsx,md,css,scss}\"",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",

@@ -1,74 +1,228 @@
 import { FC, useMemo, useState } from 'react';
+import { useSnackbar } from 'notistack';
+import CircularProgress from '@mui/material/CircularProgress';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { JsonForms } from '@jsonforms/react';
 import Grid from '@mui/material/Grid';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import Box from '@mui/material/Box';
+import Alert from '@mui/material/Alert';
 import {
   materialCells,
   materialRenderers,
 } from '@jsonforms/material-renderers';
+import { createAjv } from '@jsonforms/core';
+import ajvErrors from 'ajv-errors';
 import RatingControl from './RatingControl';
 import ratingControlTester from '../ratingControlTester';
-import schema from '../schema.json';
-import uischema from '../uischema.json';
+import AgeSliderControl from './AgeSliderControl';
+import ageSliderControlTester from '../ageSliderControlTester';
+import defaultSchema from '../schema.json';
+import defaultUischema from '../uischema.json';
+import { CSSProperties } from '@mui/material';
 
 const classes = {
   container: {
     padding: '1em',
     width: '100%',
   },
-  title: {
-    textAlign: 'center',
-    padding: '0.25em',
-  },
   dataContent: {
-    display: 'flex',
-    justifyContent: 'center',
     borderRadius: '0.25em',
     backgroundColor: '#cecece',
+    padding: '1rem',
     marginBottom: '1rem',
+    overflow: 'auto',
+    maxHeight: '500px',
+  },
+  preContent: {
+    margin: 0,
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+    overflowWrap: 'break-word',
   },
   resetButton: {
     margin: 'auto !important',
     display: 'block !important',
   },
   demoform: {
-    margin: 'auto',
     padding: '1rem',
   },
 };
 
-const initialData = {
-  name: 'Send email to Adrian',
-  description: 'Confirm if you have passed the subject\nHereby ...',
-  done: true,
-  recurrence: 'Daily',
-  rating: 3,
-};
+const initialData = {};
 
-const renderers = [
-  ...materialRenderers,
-  //register custom renderers
-  { tester: ratingControlTester, renderer: RatingControl },
-];
+const ajv = createAjv({ allErrors: true });
+ajvErrors(ajv);
 
 export const JsonFormsDemo: FC = () => {
+  const renderers = useMemo(
+    () => [
+      ...materialRenderers,
+      { tester: ratingControlTester, renderer: RatingControl },
+      { tester: ageSliderControlTester, renderer: AgeSliderControl },
+    ],
+    [],
+  );
   const [data, setData] = useState<object>(initialData);
+  const [jsonInput, setJsonInput] = useState(
+    JSON.stringify(defaultSchema, null, 2),
+  );
+  const [schema, setSchema] = useState(defaultSchema);
+  const [error, setError] = useState('');
+  const [errors, setErrors] = useState<any[]>([]);
+  const [submitErrors, setSubmitErrors] = useState<string[]>([]);
+  const { enqueueSnackbar } = useSnackbar();
+  const queryClient = useQueryClient();
+
+  const submitMutation = useMutation({
+    mutationFn: async ({ data, schema }: { data: any; schema: any }) => {
+      const response = await fetch('http://localhost:3001/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data, schema }),
+      });
+      return response.json();
+    },
+    onSuccess: (result) => {
+      if (result.success) {
+        enqueueSnackbar('Form submitted successfully!', { variant: 'success' });
+        
+        // Listen for SSE
+        const eventSource = new EventSource(`http://localhost:3001/api/events/${result.sessionId}`);
+        
+        eventSource.addEventListener('complete', (event) => {
+          const data = JSON.parse(event.data);
+          enqueueSnackbar(data.message, { variant: 'info' });
+          queryClient.invalidateQueries({ queryKey: ['submissions'] });
+          eventSource.close();
+        });
+
+        eventSource.onerror = () => {
+          eventSource.close();
+        };
+      } else {
+        enqueueSnackbar(`Error: ${result.error}`, { variant: 'error' });
+      }
+    },
+    onError: (error: any) => {
+      enqueueSnackbar(`Failed to submit: ${error.message}`, { variant: 'error' });
+    },
+  });
   const stringifiedData = useMemo(() => JSON.stringify(data, null, 2), [data]);
+
+  const handleJsonChange = (value: string) => {
+    setJsonInput(value);
+    try {
+      JSON.parse(value);
+      setError('');
+    } catch (e) {
+      setError('Invalid JSON');
+    }
+  };
 
   const clearData = () => {
     setData({});
   };
+
+  const handleSubmit = () => {
+    const validate = ajv.compile(schema);
+    const valid = validate(data);
+    
+    if (!valid) {
+      const errorMessages = (validate.errors || []).map(
+        err => err.message || `${err.instancePath || 'Field'} ${err.keyword}`,
+      );
+      setSubmitErrors(errorMessages);
+      return;
+    }
+
+    setSubmitErrors([]);
+    submitMutation.mutate({ data, schema });
+  };
+
+  const formatAndSave = () => {
+    try {
+      const parsed = JSON.parse(jsonInput);
+      setJsonInput(JSON.stringify(parsed, null, 2));
+      setSchema(parsed);
+      setData({});
+      setError('');
+    } catch (e) {
+      setError('Invalid JSON');
+    }
+  };
+
   return (
-    <Grid
-      container
-      justifyContent={'center'}
-      spacing={1}
-      style={classes.container}>
-      <Grid size={{ sm: 6 }}>
-        <Typography variant={'h4'}>Bound data</Typography>
+    <Grid container spacing={2} style={classes.container}>
+      <Grid size={{ sm: 4 }}>
+        <Typography variant={'h5'} mb={1}>
+          JSON Schema
+        </Typography>
+        <TextField
+          multiline
+          fullWidth
+          rows={30}
+          value={jsonInput}
+          onChange={e => handleJsonChange(e.target.value)}
+          error={!!error}
+          helperText={error}
+          spellCheck={false}
+          slotProps={{
+            input: { style: { fontFamily: 'monospace', fontSize: '12px' } },
+          }}
+        />
+        <Button
+          style={classes.resetButton}
+          onClick={formatAndSave}
+          color="primary"
+          variant="contained">
+          Format & Save
+        </Button>
+      </Grid>
+      <Grid size={{ sm: 4 }}>
+        <Typography variant={'h5'}>Rendered Form</Typography>
+        <div style={classes.demoform}>
+          <JsonForms
+            key={JSON.stringify(schema)}
+            schema={schema}
+            data={data}
+            renderers={renderers}
+            cells={materialCells}
+            ajv={ajv}
+            onChange={({ data, errors }) => {
+              setData(data);
+              setErrors(errors || []);
+              if (submitErrors.length > 0) {
+                setSubmitErrors([]);
+              }
+            }}
+          />
+          {submitErrors.length > 0 && (
+            <Alert severity="error" style={{ marginTop: '1rem' }}>
+              <strong>Validation Errors:</strong>
+              {submitErrors.map((err, i) => (
+                <div key={i}>• {err}</div>
+              ))}
+            </Alert>
+          )}
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSubmit}
+            disabled={submitMutation.isPending}
+            style={{ marginTop: '1rem' }}>
+            {submitMutation.isPending ? <CircularProgress size={24} /> : 'Submit'}
+          </Button>
+        </div>
+      </Grid>
+      <Grid size={{ sm: 4 }}>
+        <Typography variant={'h5'}>Bound Data</Typography>
         <div style={classes.dataContent}>
-          <pre id="boundData">{stringifiedData}</pre>
+          <pre id="boundData" style={classes.preContent as CSSProperties}>
+            {stringifiedData}
+          </pre>
         </div>
         <Button
           style={classes.resetButton}
@@ -78,19 +232,6 @@ export const JsonFormsDemo: FC = () => {
           data-testid="clear-data">
           Clear data
         </Button>
-      </Grid>
-      <Grid size={{ sm: 6 }}>
-        <Typography variant={'h4'}>Rendered form</Typography>
-        <div style={classes.demoform}>
-          <JsonForms
-            schema={schema}
-            uischema={uischema}
-            data={data}
-            renderers={renderers}
-            cells={materialCells}
-            onChange={({ data }) => setData(data)}
-          />
-        </div>
       </Grid>
     </Grid>
   );

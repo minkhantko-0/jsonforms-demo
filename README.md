@@ -1,32 +1,147 @@
-# JSON Forms React seed App
+# JSON Forms Dynamic Form Builder
 
-This seed demonstrates how to use [JSON Forms](https://jsonforms.io) with React in order to render a simple form for displaying a task entity.
+A dynamic form builder application that generates forms from JSON schemas with real-time validation, custom renderers, and data persistence.
 
-It is based on Vite and only contains minor modifications.
+## Features
 
-- Execute `npm ci` to install the prerequisites. If you want to have the latest released versions use `npm install`.
-- Execute `npm run build` to build the application.
-- Execute `npm start` to start the application.
+- **Dynamic Form Generation**: Create forms from JSON Schema definitions
+- **Custom Renderers**: Star rating and age slider components
+- **Real-time Validation**: Client and server-side validation with custom error messages
+- **Server-Sent Events**: Async processing with SSE notifications
+- **Data Persistence**: MySQL database with Drizzle ORM
+- **View Submissions**: Expandable table view of all submitted data
 
-Browse to http://localhost:3000 to see the application in action.
+## Tech Stack
 
-## File Structure
+**Frontend:**
+- React 18 + TypeScript
+- JSON Forms (Material-UI renderers)
+- TanStack Query (React Query)
+- Material-UI v7
+- Notistack (toast notifications)
+- Vite
 
-Let's briefly have a look at the most important files:
+**Backend:**
+- Hono (API framework)
+- Drizzle ORM
+- MySQL 8.0
+- Zod (validation)
+- Server-Sent Events
 
-- `src/schema.json` contains the JSON schema (also referred to as 'data schema')
-- `src/uischema.json` contains the UI schema
-- `src/main.tsx` is the entry point of the application. We also customize the Material UI theme to give each control more space.
-- `src/App.tsx` is the main app component and makes use of the `JsonForms` component in order to render a form.
+## Setup Instructions
 
-The [data schema](src/schema.json) defines the structure of a Task: it contains attributes such as title, description, due date and so on.
+### Prerequisites
+- Node.js 20+
+- Docker & Docker Compose
 
-The [corresponding UI schema](src/uischema.json) specifies controls for each property and puts them into a vertical layout that in turn contains two horizontal layouts.
+### 1. Clone Repository
+```bash
+git clone <repository-url>
+cd demo-json-forms
+```
 
-## Rendering JSON Forms
+### 2. Start MySQL Database
+```bash
+cd server
+docker-compose up -d
+```
 
-JSON Forms is rendered by importing and using the `JsonForms` component and directly handing over the `schema`, `uischema`, `data`, `renderer` and `cell` props. We listen to changes in the form via the `onChange` callback.
+### 3. Setup Backend
+```bash
+# Install dependencies
+npm install
 
-## Custom renderers
+# Push database schema
+npm run db:push
 
-Please see [our corresponding tutorial](https://jsonforms.io/docs/tutorial) on how to add custom renderers.
+# Start server (runs on port 3001)
+npm run dev
+```
+
+### 4. Setup Frontend
+```bash
+# In root directory
+npm install
+
+# Start dev server (runs on port 3000)
+npm run dev
+```
+
+### 5. Access Application
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:3001
+
+## Usage
+
+### Creating Forms
+1. Edit JSON Schema in the left panel
+2. Click "Format & Save" to update the form
+3. Fill out the generated form in the middle panel
+4. View bound data in the right panel
+
+### Custom Renderers
+- Fields ending with `rating` → Star rating component
+- Fields ending with `age` → Slider component
+
+### Submitting Data
+1. Fill out the form
+2. Click "Submit"
+3. Wait for validation
+4. Success toast appears immediately
+5. After 15 seconds, SSE completes and data is saved to database
+6. Second toast notification appears
+
+### Viewing Submissions
+1. Click "View Submissions" button
+2. See list of all submissions
+3. Click arrow icon to expand and view full data
+
+## Project Structure
+
+```
+demo-json-forms/
+├── src/
+│   ├── components/
+│   │   ├── JsonFormsDemo.tsx      # Main form component
+│   │   ├── ViewSubmissions.tsx    # Submissions table
+│   │   ├── RatingControl.tsx      # Star rating renderer
+│   │   └── AgeSliderControl.tsx   # Age slider renderer
+│   ├── schema.json                # Default JSON schema
+│   └── main.tsx                   # App entry point
+├── server/
+│   ├── src/
+│   │   ├── db/
+│   │   │   ├── schema.ts          # Drizzle schema
+│   │   │   └── index.ts           # DB connection
+│   │   └── index.ts               # Hono API server
+│   └── docker-compose.yml         # MySQL container
+└── README.md
+```
+
+## API Endpoints
+
+- `POST /api/submit` - Submit form data (validates with Zod)
+- `GET /api/submissions` - Get all submissions
+- `GET /api/events/:sessionId` - SSE endpoint for async processing
+
+## Custom Error Messages
+
+Add `errorMessage` to schema properties:
+
+```json
+{
+  "name": {
+    "type": "string",
+    "minLength": 3,
+    "errorMessage": {
+      "minLength": "Name must be at least 3 characters"
+    }
+  }
+}
+```
+
+## Development
+
+- Frontend hot reload: Vite HMR
+- Backend hot reload: tsx watch mode
+- Database changes: Run `npm run db:push` in server directory

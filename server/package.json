@@ -1,0 +1,22 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "db:push": "drizzle-kit push:mysql"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "@hono/node-server": "^1.0.0",
+    "zod": "^3.22.0",
+    "json-schema-to-zod": "^2.0.0",
+    "drizzle-orm": "^0.29.0",
+    "mysql2": "^3.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0",
+    "@types/node": "^20.0.0",
+    "drizzle-kit": "^0.20.0"
+  }
+}

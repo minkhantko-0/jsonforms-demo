@@ -20,6 +20,7 @@ A dynamic form builder application that generates forms from JSON schemas with r
 - TanStack Query (React Query)
 - Material-UI v7
 - Notistack (toast notifications)
+- Zustand (state management)
 - Vite
 
 **Backend:**
@@ -112,22 +113,36 @@ npm run dev
 ```
 demo-json-forms/
 ├── src/
-│   ├── components/
-│   │   ├── JsonFormsDemo.tsx      # Main form component
-│   │   ├── ViewSubmissions.tsx    # Submissions table
-│   │   ├── RatingControl.tsx      # Star rating renderer
-│   │   ├── AgeSliderControl.tsx   # Age slider renderer
-│   │   └── FileUploadControl.tsx  # File upload renderer
-│   ├── schema.json                # Default JSON schema
-│   └── main.tsx                   # App entry point
+│   ├── components/              # React components
+│   │   ├── JsonFormsDemo.tsx    # Main form component
+│   │   ├── ViewSubmissions.tsx  # Submissions table
+│   │   ├── RatingControl.tsx    # Star rating renderer
+│   │   ├── AgeSliderControl.tsx # Age slider renderer
+│   │   └── FileUploadControl.tsx # File upload renderer
+│   ├── store/
+│   │   └── formStore.ts         # Zustand state management
+│   ├── testers/                 # JSON Forms testers
+│   │   ├── ratingControlTester.ts
+│   │   ├── ageSliderControlTester.ts
+│   │   └── fileUploadControlTester.ts
+│   ├── data/
+│   │   └── schema.json          # Default JSON schema
+│   ├── App.tsx                  # Root component
+│   └── main.tsx                 # App entry point
 ├── server/
 │   ├── src/
+│   │   ├── routes/              # API route handlers
+│   │   │   ├── submit.ts        # Form submission
+│   │   │   ├── submissions.ts   # Get submissions
+│   │   │   └── events.ts        # SSE endpoint
+│   │   ├── services/
+│   │   │   └── fileUpload.ts    # UploadThing service
 │   │   ├── db/
-│   │   │   ├── schema.ts          # Drizzle schema
-│   │   │   └── index.ts           # DB connection
-│   │   └── index.ts               # Hono API server
-│   ├── .env                       # Environment variables
-│   └── docker-compose.yml         # MySQL container
+│   │   │   ├── schema.ts        # Drizzle schema
+│   │   │   └── index.ts         # DB connection
+│   │   └── index.ts             # Server entry point
+│   ├── .env                     # Environment variables
+│   └── docker-compose.yml       # MySQL container
 └── README.md
 ```
 
@@ -174,6 +189,7 @@ Files are uploaded to UploadThing and URLs are stored in the database.
 - Frontend hot reload: Vite HMR
 - Backend hot reload: tsx watch mode
 - Database changes: Run `npm run db:push` in server directory
+- Clear database: `docker exec server-mysql-1 mysql -uroot -proot -e "USE formdata; DELETE FROM submissions;"`
 
 ## Environment Variables
 
@@ -181,3 +197,7 @@ Files are uploaded to UploadThing and URLs are stored in the database.
 ```
 UPLOADTHING_TOKEN=your_uploadthing_token
 ```
+
+## State Management
+
+Form state and JSON schema are persisted using Zustand, allowing you to switch between pages without losing your work.

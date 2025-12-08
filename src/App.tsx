@@ -9,7 +9,7 @@ const App = () => {
   const [page, setPage] = useState<'form' | 'view'>('form');
 
   return (
-    <>
+    <div className="App">
       <Header />
       <Box display="flex" justifyContent="center" gap={2} p={2}>
         <Button
@@ -24,7 +24,7 @@ const App = () => {
         </Button>
       </Box>
       {page === 'form' ? <JsonFormsDemo /> : <ViewSubmissions />}
-    </>
+    </div>
   );
 };
 

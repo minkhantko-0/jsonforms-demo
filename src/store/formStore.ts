@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import defaultSchema from '../schema.json';
+import defaultSchema from '../data/schema.json';
 
 interface FormStore {
   data: object;

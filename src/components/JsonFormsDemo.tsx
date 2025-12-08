@@ -16,13 +16,12 @@ import {
 import { createAjv } from '@jsonforms/core';
 import ajvErrors from 'ajv-errors';
 import RatingControl from './RatingControl';
-import ratingControlTester from '../ratingControlTester';
+import ratingControlTester from '../testers/ratingControlTester';
 import AgeSliderControl from './AgeSliderControl';
-import ageSliderControlTester from '../ageSliderControlTester';
+import ageSliderControlTester from '../testers/ageSliderControlTester';
 import FileUploadControl from './FileUploadControl';
-import fileUploadControlTester from '../fileUploadControlTester';
-import defaultSchema from '../schema.json';
-import defaultUischema from '../uischema.json';
+import fileUploadControlTester from '../testers/fileUploadControlTester';
+import defaultSchema from '../data/schema.json';
 import { CSSProperties } from '@mui/material';
 import { useFormStore } from '../store/formStore';
 

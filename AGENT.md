@@ -9,7 +9,7 @@ A full-stack dynamic form builder that generates forms from JSON schemas with re
 - **Port**: 3000
 - **Main Component**: `src/components/JsonFormsDemo.tsx`
 - **Layout**: 3-column layout (JSON Schema input | Rendered Form | Bound Data)
-- **State Management**: React Query (TanStack Query)
+- **State Management**: Zustand (form state) + React Query (server state)
 - **UI Library**: Material-UI v7
 - **Form Library**: JSON Forms with custom renderers
 
@@ -41,18 +41,18 @@ Three custom renderers registered in `JsonFormsDemo.tsx`:
 **Rating Control** (`src/components/RatingControl.tsx`)
 - Matches fields ending with "rating"
 - Renders as star rating component (1-5 stars)
-- Tester: `src/ratingControlTester.ts`
+- Tester: `src/testers/ratingControlTester.ts`
 
 **Age Slider Control** (`src/components/AgeSliderControl.tsx`)
 - Matches fields ending with "age"
 - Renders as slider with min/max from schema
-- Tester: `src/ageSliderControlTester.ts`
+- Tester: `src/testers/ageSliderControlTester.ts`
 
 **File Upload Control** (`src/components/FileUploadControl.tsx`)
 - Matches fields with `format: "data-url"`
 - Stores File object in form data
 - Displays selected filename or uploaded URL
-- Tester: `src/fileUploadControlTester.ts`
+- Tester: `src/testers/fileUploadControlTester.ts`
 
 ### 3. Validation System
 - **Client-side**: AJV with ajv-errors for custom error messages
@@ -65,15 +65,15 @@ Three custom renderers registered in `JsonFormsDemo.tsx`:
 2. Frontend validates data (excluding File objects)
 3. If files present: sends FormData, else: sends JSON
 4. Backend receives data:
-   - Extracts files from FormData
-   - Uploads files to UploadThing using Hono's `env(c)` for token
-   - Replaces File objects with URLs in data
    - Validates with Zod
    - Stores in pendingSubmissions Map
-   - Returns sessionId
-5. Frontend connects to SSE endpoint
-6. After 15 seconds, backend saves to MySQL
-7. SSE completes, frontend shows notification and refreshes submissions
+   - Returns sessionId immediately
+5. Frontend clears form and connects to SSE endpoint
+6. Backend uploads files to UploadThing (if present)
+7. Backend saves to MySQL
+8. Waits remaining time to reach 10 seconds total
+9. SSE completes and sends notification
+9. Frontend shows notification and refreshes submissions
 
 ### 5. File Upload System
 **Frontend**:
@@ -83,11 +83,11 @@ Three custom renderers registered in `JsonFormsDemo.tsx`:
 
 **Backend**:
 - Receives FormData with files
-- Uses Hono's `env(c)` to get UPLOADTHING_TOKEN
-- Creates UTApi instance per request
-- Uploads files to UploadThing
+- Returns success immediately
+- Async: Uploads files to UploadThing via SSE
 - Replaces file fields with URLs
 - Saves final data with URLs to database
+- Sends completion event after 10 seconds
 
 ### 6. View Submissions
 - Component: `src/components/ViewSubmissions.tsx`
@@ -101,24 +101,34 @@ Three custom renderers registered in `JsonFormsDemo.tsx`:
 ```
 demo-json-forms/
 ├── src/
-│   ├── components/
+│   ├── components/                    # React components
 │   │   ├── JsonFormsDemo.tsx          # Main form (3-column layout)
 │   │   ├── ViewSubmissions.tsx        # Submissions table
 │   │   ├── RatingControl.tsx          # Star rating renderer
 │   │   ├── AgeSliderControl.tsx       # Age slider renderer
 │   │   └── FileUploadControl.tsx      # File upload renderer
-│   ├── ratingControlTester.ts         # Tester for rating fields
-│   ├── ageSliderControlTester.ts      # Tester for age fields
-│   ├── fileUploadControlTester.ts     # Tester for file fields
-│   ├── schema.json                    # Default JSON schema
+│   ├── store/
+│   │   └── formStore.ts               # Zustand state management
+│   ├── testers/                       # JSON Forms testers
+│   │   ├── ratingControlTester.ts
+│   │   ├── ageSliderControlTester.ts
+│   │   └── fileUploadControlTester.ts
+│   ├── data/
+│   │   └── schema.json                # Default JSON schema
 │   ├── App.tsx                        # Root with navigation
 │   └── main.tsx                       # Entry point
 ├── server/
 │   ├── src/
+│   │   ├── routes/                    # API route handlers
+│   │   │   ├── submit.ts              # Form submission handler
+│   │   │   ├── submissions.ts         # Get submissions handler
+│   │   │   └── events.ts              # SSE handler
+│   │   ├── services/
+│   │   │   └── fileUpload.ts          # UploadThing service
 │   │   ├── db/
 │   │   │   ├── schema.ts              # Drizzle schema
 │   │   │   └── index.ts               # DB connection
-│   │   └── index.ts                   # Hono API server
+│   │   └── index.ts                   # Server entry point
 │   ├── .env                           # UPLOADTHING_TOKEN
 │   ├── docker-compose.yml             # MySQL container
 │   └── drizzle.config.ts              # Drizzle config
@@ -171,12 +181,17 @@ UPLOADTHING_TOKEN=<your-token-here>
 ### 4. SSE for Async Processing
 - Simulates long-running backend process
 - Allows immediate user feedback
-- Database save happens after delay
+- Total processing time: minimum 10 seconds from start
+- If upload/insert takes >10s, completes immediately after
 
-### 5. Hono env() for Environment Variables
-- Uses `env(c)` from 'hono/adapter'
-- Works across different runtimes
-- Accesses process.env in Node.js
+### 5. Environment Variables
+- Uses dotenv to load .env file
+- Accesses via process.env in Node.js
+
+### 6. State Persistence
+- Zustand store persists form data and schema
+- Allows switching between pages without losing work
+- Clears form data after successful submission
 
 ## Common Issues & Solutions
 
@@ -193,7 +208,7 @@ UPLOADTHING_TOKEN=<your-token-here>
 **Solution**: Filter out File objects before validation
 
 ### Issue: UPLOADTHING_TOKEN not found
-**Solution**: Use Hono's `env(c)` instead of `process.env`
+**Solution**: Install dotenv and import 'dotenv/config' at top of server/src/index.ts
 
 ## Development Commands
 
@@ -217,7 +232,23 @@ npm run dev
 ### Database
 ```bash
 cd server && npm run db:push  # Push schema changes
+
+# Clear all submissions
+docker exec server-mysql-1 mysql -uroot -proot -e "USE formdata; DELETE FROM submissions;"
 ```
+
+## Code Organization
+
+**Frontend:**
+- `components/` - React components
+- `store/` - Zustand state management
+- `testers/` - JSON Forms custom testers
+- `data/` - JSON schema files
+
+**Backend:**
+- `routes/` - API route handlers (submit, submissions, events)
+- `services/` - Business logic (fileUpload)
+- `db/` - Database schema and connection
 
 ## User Preferences
 - Minimal code implementations

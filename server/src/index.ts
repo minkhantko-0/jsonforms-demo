@@ -1,4 +1,6 @@
+import 'dotenv/config';
 import { Hono } from 'hono';
+import { env } from 'hono/adapter';
 import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
@@ -6,6 +8,7 @@ import { jsonSchemaToZod } from 'json-schema-to-zod';
 import { z } from 'zod';
 import { db } from './db/index';
 import { submissions } from './db/schema';
+import { UTApi } from 'uploadthing/server';
 
 const app = new Hono();
 const pendingSubmissions = new Map<string, { data: any; schema: any }>();
@@ -13,9 +16,49 @@ const pendingSubmissions = new Map<string, { data: any; schema: any }>();
 app.use('/*', cors());
 
 app.post('/api/submit', async c => {
-  const { data, schema } = await c.req.json();
-
   try {
+    const contentType = c.req.header('content-type') || '';
+    let data: any;
+    let schema: any;
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await c.req.formData();
+      schema = JSON.parse(formData.get('schema') as string);
+      data = JSON.parse(formData.get('data') as string);
+
+      console.log('FormData entries:');
+      for (const [key, value] of formData.entries()) {
+        console.log(
+          `  ${key}:`,
+          value instanceof File ? `File(${value.name})` : typeof value,
+        );
+      }
+
+      // Upload files to UploadThing
+      for (const [key, value] of formData.entries()) {
+        if (key !== 'data' && key !== 'schema' && value instanceof File) {
+          const token = (env(c).UPLOADTHING_TOKEN as string) || '';
+          try {
+            const utapi = new UTApi({ token });
+            const uploaded = await utapi.uploadFiles(value);
+            console.log(`Upload result for ${key}:`, uploaded);
+            if (uploaded.data) {
+              data[key] = uploaded.data.url;
+              console.log(`Set data[${key}] =`, uploaded.data.url);
+            }
+          } catch (err) {
+            console.error(`Failed to upload ${key}:`, err);
+            throw new Error(`File upload failed for ${key}`);
+          }
+        }
+      }
+      console.log('Final data after uploads:', data);
+    } else {
+      const body = await c.req.json();
+      data = body.data;
+      schema = body.schema;
+    }
+
     // Convert JSON Schema to Zod schema
     const zodSchemaString = jsonSchemaToZod(schema);
     const zodSchema = new Function('z', `return ${zodSchemaString}`)(z);

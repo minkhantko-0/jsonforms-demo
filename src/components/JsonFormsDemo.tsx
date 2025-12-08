@@ -19,6 +19,8 @@ import RatingControl from './RatingControl';
 import ratingControlTester from '../ratingControlTester';
 import AgeSliderControl from './AgeSliderControl';
 import ageSliderControlTester from '../ageSliderControlTester';
+import FileUploadControl from './FileUploadControl';
+import fileUploadControlTester from '../fileUploadControlTester';
 import defaultSchema from '../schema.json';
 import defaultUischema from '../uischema.json';
 import { CSSProperties } from '@mui/material';
@@ -62,6 +64,7 @@ export const JsonFormsDemo: FC = () => {
       ...materialRenderers,
       { tester: ratingControlTester, renderer: RatingControl },
       { tester: ageSliderControlTester, renderer: AgeSliderControl },
+      { tester: fileUploadControlTester, renderer: FileUploadControl },
     ],
     [],
   );
@@ -78,11 +81,36 @@ export const JsonFormsDemo: FC = () => {
 
   const submitMutation = useMutation({
     mutationFn: async ({ data, schema }: { data: any; schema: any }) => {
-      const response = await fetch('http://localhost:3001/api/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data, schema }),
-      });
+      const hasFiles = Object.values(data).some(v => v instanceof File);
+
+      let response;
+      if (hasFiles) {
+        const formData = new FormData();
+        const cleanData: any = {};
+        
+        for (const [key, value] of Object.entries(data)) {
+          if (value instanceof File) {
+            formData.append(key, value);
+          } else {
+            cleanData[key] = value;
+          }
+        }
+        
+        formData.append('data', JSON.stringify(cleanData));
+        formData.append('schema', JSON.stringify(schema));
+        
+        response = await fetch('http://localhost:3001/api/submit', {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        response = await fetch('http://localhost:3001/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data, schema }),
+        });
+      }
+      
       return response.json();
     },
     onSuccess: (result) => {
@@ -110,7 +138,14 @@ export const JsonFormsDemo: FC = () => {
       enqueueSnackbar(`Failed to submit: ${error.message}`, { variant: 'error' });
     },
   });
-  const stringifiedData = useMemo(() => JSON.stringify(data, null, 2), [data]);
+  const stringifiedData = useMemo(() => {
+    return JSON.stringify(data, (key, value) => {
+      if (value instanceof File) {
+        return `[File: ${value.name}]`;
+      }
+      return value;
+    }, 2);
+  }, [data]);
 
   const handleJsonChange = (value: string) => {
     setJsonInput(value);
@@ -127,8 +162,13 @@ export const JsonFormsDemo: FC = () => {
   };
 
   const handleSubmit = () => {
+    // Remove File objects for validation
+    const dataForValidation = Object.fromEntries(
+      Object.entries(data).filter(([_, v]) => !(v instanceof File))
+    );
+    
     const validate = ajv.compile(schema);
-    const valid = validate(data);
+    const valid = validate(dataForValidation);
     
     if (!valid) {
       const errorMessages = (validate.errors || []).map(

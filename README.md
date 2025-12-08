@@ -5,7 +5,8 @@ A dynamic form builder application that generates forms from JSON schemas with r
 ## Features
 
 - **Dynamic Form Generation**: Create forms from JSON Schema definitions
-- **Custom Renderers**: Star rating and age slider components
+- **Custom Renderers**: Star rating, age slider, and file upload components
+- **File Upload**: UploadThing integration for image and PDF uploads
 - **Real-time Validation**: Client and server-side validation with custom error messages
 - **Server-Sent Events**: Async processing with SSE notifications
 - **Data Persistence**: MySQL database with Drizzle ORM
@@ -26,6 +27,7 @@ A dynamic form builder application that generates forms from JSON schemas with r
 - Drizzle ORM
 - MySQL 8.0
 - Zod (validation)
+- UploadThing (file storage)
 - Server-Sent Events
 
 ## Setup Instructions
@@ -46,7 +48,15 @@ cd server
 docker-compose up -d
 ```
 
-### 3. Setup Backend
+### 3. Configure UploadThing
+```bash
+# Create .env file in server directory
+cd server
+echo UPLOADTHING_TOKEN=your_token_here > .env
+```
+Get your token from https://uploadthing.com
+
+### 4. Setup Backend
 ```bash
 # Install dependencies
 npm install
@@ -58,7 +68,7 @@ npm run db:push
 npm run dev
 ```
 
-### 4. Setup Frontend
+### 5. Setup Frontend
 ```bash
 # In root directory
 npm install
@@ -67,7 +77,7 @@ npm install
 npm run dev
 ```
 
-### 5. Access Application
+### 6. Access Application
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:3001
 
@@ -82,6 +92,7 @@ npm run dev
 ### Custom Renderers
 - Fields ending with `rating` → Star rating component
 - Fields ending with `age` → Slider component
+- Fields with `format: "data-url"` → File upload component
 
 ### Submitting Data
 1. Fill out the form
@@ -105,7 +116,8 @@ demo-json-forms/
 │   │   ├── JsonFormsDemo.tsx      # Main form component
 │   │   ├── ViewSubmissions.tsx    # Submissions table
 │   │   ├── RatingControl.tsx      # Star rating renderer
-│   │   └── AgeSliderControl.tsx   # Age slider renderer
+│   │   ├── AgeSliderControl.tsx   # Age slider renderer
+│   │   └── FileUploadControl.tsx  # File upload renderer
 │   ├── schema.json                # Default JSON schema
 │   └── main.tsx                   # App entry point
 ├── server/
@@ -114,13 +126,14 @@ demo-json-forms/
 │   │   │   ├── schema.ts          # Drizzle schema
 │   │   │   └── index.ts           # DB connection
 │   │   └── index.ts               # Hono API server
+│   ├── .env                       # Environment variables
 │   └── docker-compose.yml         # MySQL container
 └── README.md
 ```
 
 ## API Endpoints
 
-- `POST /api/submit` - Submit form data (validates with Zod)
+- `POST /api/submit` - Submit form data (JSON or FormData with files)
 - `GET /api/submissions` - Get all submissions
 - `GET /api/events/:sessionId` - SSE endpoint for async processing
 
@@ -140,8 +153,31 @@ Add `errorMessage` to schema properties:
 }
 ```
 
+## File Upload
+
+Add file upload field to schema:
+
+```json
+{
+  "profilePicture": {
+    "type": "string",
+    "format": "data-url",
+    "title": "Profile Picture"
+  }
+}
+```
+
+Files are uploaded to UploadThing and URLs are stored in the database.
+
 ## Development
 
 - Frontend hot reload: Vite HMR
 - Backend hot reload: tsx watch mode
 - Database changes: Run `npm run db:push` in server directory
+
+## Environment Variables
+
+### Server (.env)
+```
+UPLOADTHING_TOKEN=your_uploadthing_token
+```

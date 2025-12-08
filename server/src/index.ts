@@ -11,7 +11,10 @@ import { submissions } from './db/schema';
 import { UTApi } from 'uploadthing/server';
 
 const app = new Hono();
-const pendingSubmissions = new Map<string, { data: any; schema: any }>();
+const pendingSubmissions = new Map<
+  string,
+  { data: any; schema: any; formData?: FormData }
+>();
 
 app.use('/*', cors());
 
@@ -20,57 +23,31 @@ app.post('/api/submit', async c => {
     const contentType = c.req.header('content-type') || '';
     let data: any;
     let schema: any;
+    let formData: FormData | null = null;
 
     if (contentType.includes('multipart/form-data')) {
-      const formData = await c.req.formData();
+      formData = await c.req.formData();
       schema = JSON.parse(formData.get('schema') as string);
       data = JSON.parse(formData.get('data') as string);
-
-      console.log('FormData entries:');
-      for (const [key, value] of formData.entries()) {
-        console.log(
-          `  ${key}:`,
-          value instanceof File ? `File(${value.name})` : typeof value,
-        );
-      }
-
-      // Upload files to UploadThing
-      for (const [key, value] of formData.entries()) {
-        if (key !== 'data' && key !== 'schema' && value instanceof File) {
-          const token = (env(c).UPLOADTHING_TOKEN as string) || '';
-          try {
-            const utapi = new UTApi({ token });
-            const uploaded = await utapi.uploadFiles(value);
-            console.log(`Upload result for ${key}:`, uploaded);
-            if (uploaded.data) {
-              data[key] = uploaded.data.url;
-              console.log(`Set data[${key}] =`, uploaded.data.url);
-            }
-          } catch (err) {
-            console.error(`Failed to upload ${key}:`, err);
-            throw new Error(`File upload failed for ${key}`);
-          }
-        }
-      }
-      console.log('Final data after uploads:', data);
     } else {
       const body = await c.req.json();
       data = body.data;
       schema = body.schema;
     }
 
-    // Convert JSON Schema to Zod schema
+    // Validate data
     const zodSchemaString = jsonSchemaToZod(schema);
     const zodSchema = new Function('z', `return ${zodSchemaString}`)(z);
-
-    // Validate data
     zodSchema.parse(data);
 
-    // Store temporarily, will save to DB after SSE completes
+    // Store for async processing
     const sessionId = Date.now().toString();
-    pendingSubmissions.set(sessionId, { data, schema });
+    pendingSubmissions.set(sessionId, {
+      data,
+      schema,
+      formData: formData || undefined,
+    });
 
-    // Return success and session ID for SSE
     return c.json({ success: true, sessionId });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 400);
@@ -90,23 +67,69 @@ app.get('/api/events/:sessionId', c => {
   const sessionId = c.req.param('sessionId');
 
   return streamSSE(c, async stream => {
-    // Wait 15 seconds then send event
-    await new Promise(resolve => setTimeout(resolve, 15000));
-
-    // Save to database after SSE completes
     const pending = pendingSubmissions.get(sessionId);
-    if (pending) {
+    if (!pending) {
+      await stream.writeSSE({
+        data: JSON.stringify({ message: 'Session not found' }),
+        event: 'error',
+      });
+      return;
+    }
+
+    let data = pending.data;
+
+    // Upload files if present
+    if (pending.formData) {
+      for (const [key, value] of pending.formData.entries()) {
+        if (key !== 'data' && key !== 'schema' && value instanceof File) {
+          try {
+            const token = process.env.UPLOADTHING_TOKEN || '';
+            const utapi = new UTApi({ token });
+            const uploaded = await utapi.uploadFiles(value);
+            if (!uploaded.data) {
+              await stream.writeSSE({
+                data: JSON.stringify({ message: 'File upload failed' }),
+                event: 'error',
+              });
+              pendingSubmissions.delete(sessionId);
+              return;
+            }
+            data[key] = uploaded.data.url;
+          } catch (err) {
+            await stream.writeSSE({
+              data: JSON.stringify({ message: 'File upload failed' }),
+              event: 'error',
+            });
+            pendingSubmissions.delete(sessionId);
+            return;
+          }
+        }
+      }
+    }
+
+    // Insert to database
+    try {
       await db.insert(submissions).values({
-        data: pending.data,
+        data,
         formSchema: pending.schema,
       });
+    } catch (err) {
+      await stream.writeSSE({
+        data: JSON.stringify({ message: 'Database insert failed' }),
+        event: 'error',
+      });
       pendingSubmissions.delete(sessionId);
+      return;
     }
+
+    // Wait 10 seconds
+    await new Promise(resolve => setTimeout(resolve, 10000));
 
     await stream.writeSSE({
       data: JSON.stringify({ message: 'Processing completed successfully!' }),
       event: 'complete',
     });
+    pendingSubmissions.delete(sessionId);
   });
 });
 

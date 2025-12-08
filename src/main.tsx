@@ -29,7 +29,7 @@ if (!rootEl) throw new Error('Failed to find the root element');
 createRoot(rootEl).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <SnackbarProvider maxSnack={3}>
+      <SnackbarProvider maxSnack={3} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
         <ThemeProvider theme={theme}>
           <CssBaseline />
           <App />

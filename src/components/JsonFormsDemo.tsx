@@ -1,4 +1,4 @@
-import { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useState, useEffect } from 'react';
 import { useSnackbar } from 'notistack';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24,6 +24,7 @@ import fileUploadControlTester from '../fileUploadControlTester';
 import defaultSchema from '../schema.json';
 import defaultUischema from '../uischema.json';
 import { CSSProperties } from '@mui/material';
+import { useFormStore } from '../store/formStore';
 
 const classes = {
   container: {
@@ -68,11 +69,7 @@ export const JsonFormsDemo: FC = () => {
     ],
     [],
   );
-  const [data, setData] = useState<object>(initialData);
-  const [jsonInput, setJsonInput] = useState(
-    JSON.stringify(defaultSchema, null, 2),
-  );
-  const [schema, setSchema] = useState(defaultSchema);
+  const { data, schema, jsonInput, setData, setSchema, setJsonInput, clearData: clearStoreData } = useFormStore();
   const [error, setError] = useState('');
   const [errors, setErrors] = useState<any[]>([]);
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
@@ -116,6 +113,7 @@ export const JsonFormsDemo: FC = () => {
     onSuccess: (result) => {
       if (result.success) {
         enqueueSnackbar('Form submitted successfully!', { variant: 'success' });
+        clearStoreData();
         
         // Listen for SSE
         const eventSource = new EventSource(`http://localhost:3001/api/events/${result.sessionId}`);
@@ -158,7 +156,7 @@ export const JsonFormsDemo: FC = () => {
   };
 
   const clearData = () => {
-    setData({});
+    clearStoreData();
   };
 
   const handleSubmit = () => {
@@ -187,7 +185,7 @@ export const JsonFormsDemo: FC = () => {
       const parsed = JSON.parse(jsonInput);
       setJsonInput(JSON.stringify(parsed, null, 2));
       setSchema(parsed);
-      setData({});
+      clearStoreData();
       setError('');
     } catch (e) {
       setError('Invalid JSON');

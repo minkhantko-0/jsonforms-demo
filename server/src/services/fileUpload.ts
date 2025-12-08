@@ -11,3 +11,16 @@ export const uploadFile = async (file: File): Promise<string | null> => {
     return null;
   }
 };
+
+export const deleteFile = async (url: string): Promise<void> => {
+  try {
+    const token = process.env.UPLOADTHING_TOKEN || '';
+    const utapi = new UTApi({ token });
+    const fileKey = url.split('/').pop();
+    if (fileKey) {
+      await utapi.deleteFiles(fileKey);
+    }
+  } catch (err) {
+    console.error('File delete error:', err);
+  }
+};

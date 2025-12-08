@@ -2,14 +2,13 @@ import { Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { db } from '../db/index';
 import { submissions } from '../db/schema';
-import { uploadFile } from '../services/fileUpload';
+import { uploadFile, deleteFile } from '../services/fileUpload';
 import { pendingSubmissions } from './submit';
 
 export const eventsHandler = (c: Context) => {
   const sessionId = c.req.param('sessionId');
 
   return streamSSE(c, async (stream) => {
-    const startTime = Date.now();
     const pending = pendingSubmissions.get(sessionId);
     if (!pending) {
       await stream.writeSSE({
@@ -20,6 +19,7 @@ export const eventsHandler = (c: Context) => {
     }
 
     let data = pending.data;
+    const uploadedUrls: string[] = [];
 
     if (pending.formData) {
       for (const [key, value] of pending.formData.entries()) {
@@ -34,9 +34,12 @@ export const eventsHandler = (c: Context) => {
             return;
           }
           data[key] = url;
+          uploadedUrls.push(url);
         }
       }
     }
+
+    await new Promise((resolve) => setTimeout(resolve, 7000));
 
     try {
       await db.insert(submissions).values({
@@ -49,17 +52,16 @@ export const eventsHandler = (c: Context) => {
         event: 'error',
       });
       pendingSubmissions.delete(sessionId);
+      
+      // Delete uploaded files in background
+      Promise.all(uploadedUrls.map(url => deleteFile(url)));
       return;
     }
 
-    const elapsed = Date.now() - startTime;
-    const remaining = Math.max(0, 10000 - elapsed);
-    await new Promise((resolve) => setTimeout(resolve, remaining));
-
+    pendingSubmissions.delete(sessionId);
     await stream.writeSSE({
       data: JSON.stringify({ message: 'Processing completed successfully!' }),
       event: 'complete',
     });
-    pendingSubmissions.delete(sessionId);
   });
 };

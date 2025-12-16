@@ -68,12 +68,93 @@ export const JsonFormsDemo: FC = () => {
     ],
     [],
   );
-  const { data, schema, jsonInput, setData, setSchema, setJsonInput, clearData: clearStoreData } = useFormStore();
+  const {
+    data,
+    schema,
+    uiSchema,
+    jsonInput,
+    uiSchemaInput,
+    setData,
+    setSchema,
+    setUiSchema,
+    setJsonInput,
+    setUiSchemaInput,
+    clearData: clearStoreData,
+  } = useFormStore();
   const [error, setError] = useState('');
+  const [uiSchemaError, setUiSchemaError] = useState('');
   const [errors, setErrors] = useState<any[]>([]);
   const [submitErrors, setSubmitErrors] = useState<string[]>([]);
+  const [isLoadingWorkflows, setIsLoadingWorkflows] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
   const queryClient = useQueryClient();
+
+  // Fetch workflow options from API
+  useEffect(() => {
+    const fetchWorkflowOptions = async () => {
+      setIsLoadingWorkflows(true);
+      try {
+        console.log('=== FETCHING WORKFLOWS FROM API ===');
+        console.log('Current schema before API:', schema);
+
+        const response = await fetch('http://localhost:3001/api/workflows');
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const workflows = await response.json();
+        console.log('✅ API Response - Workflows fetched:', workflows);
+
+        // Assuming API returns: [{ id: "workflow-1", name: "Standard Approval" }, ...]
+        const enumValues = workflows.map((w: any) => w.id);
+        const enumLabels = workflows.map((w: any) => w.name);
+
+        console.log('📋 Extracted enum values:', enumValues);
+        console.log('📋 Extracted enum labels:', enumLabels);
+
+        // Update the schema with API data
+        const updatedSchema = {
+          ...schema,
+          properties: {
+            ...schema.properties,
+            workflowId: {
+              type: 'string',
+              title: 'Workflow ID',
+              enum: enumValues,
+              enumNames: enumLabels,
+            },
+          },
+        };
+
+        console.log('🔄 Updated schema with API data:', updatedSchema);
+        console.log(
+          '🔍 workflowId property:',
+          updatedSchema.properties.workflowId,
+        );
+
+        // Update schema for the form but DON'T update the editor
+        setSchema(updatedSchema, false);
+
+        // Verify after setting
+        console.log('✅ Schema updated in store (editor unchanged)');
+
+        enqueueSnackbar(`Loaded ${workflows.length} workflows from API`, {
+          variant: 'success',
+        });
+      } catch (error) {
+        console.error('❌ Failed to fetch workflow options:', error);
+        enqueueSnackbar('Failed to load workflow options. Using defaults.', {
+          variant: 'warning',
+        });
+      } finally {
+        setIsLoadingWorkflows(false);
+      }
+    };
+
+    fetchWorkflowOptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
 
   const submitMutation = useMutation({
     mutationFn: async ({ data, schema }: { data: any; schema: any }) => {
@@ -83,7 +164,7 @@ export const JsonFormsDemo: FC = () => {
       if (hasFiles) {
         const formData = new FormData();
         const cleanData: any = {};
-        
+
         for (const [key, value] of Object.entries(data)) {
           if (value instanceof File) {
             formData.append(key, value);
@@ -91,10 +172,10 @@ export const JsonFormsDemo: FC = () => {
             cleanData[key] = value;
           }
         }
-        
+
         formData.append('data', JSON.stringify(cleanData));
         formData.append('schema', JSON.stringify(schema));
-        
+
         response = await fetch('http://localhost:3001/api/submit', {
           method: 'POST',
           body: formData,
@@ -106,18 +187,20 @@ export const JsonFormsDemo: FC = () => {
           body: JSON.stringify({ data, schema }),
         });
       }
-      
+
       return response.json();
     },
-    onSuccess: (result) => {
+    onSuccess: result => {
       if (result.success) {
         enqueueSnackbar('Form submitted successfully!', { variant: 'success' });
         clearStoreData();
-        
+
         // Listen for SSE
-        const eventSource = new EventSource(`http://localhost:3001/api/events/${result.sessionId}`);
-        
-        eventSource.addEventListener('complete', (event) => {
+        const eventSource = new EventSource(
+          `http://localhost:3001/api/events/${result.sessionId}`,
+        );
+
+        eventSource.addEventListener('complete', event => {
           const data = JSON.parse(event.data);
           enqueueSnackbar(data.message, { variant: 'info' });
           queryClient.invalidateQueries({ queryKey: ['submissions'] });
@@ -132,16 +215,22 @@ export const JsonFormsDemo: FC = () => {
       }
     },
     onError: (error: any) => {
-      enqueueSnackbar(`Failed to submit: ${error.message}`, { variant: 'error' });
+      enqueueSnackbar(`Failed to submit: ${error.message}`, {
+        variant: 'error',
+      });
     },
   });
   const stringifiedData = useMemo(() => {
-    return JSON.stringify(data, (key, value) => {
-      if (value instanceof File) {
-        return `[File: ${value.name}]`;
-      }
-      return value;
-    }, 2);
+    return JSON.stringify(
+      data,
+      (key, value) => {
+        if (value instanceof File) {
+          return `[File: ${value.name}]`;
+        }
+        return value;
+      },
+      2,
+    );
   }, [data]);
 
   const handleJsonChange = (value: string) => {
@@ -154,6 +243,16 @@ export const JsonFormsDemo: FC = () => {
     }
   };
 
+  const handleUiSchemaChange = (value: string) => {
+    setUiSchemaInput(value);
+    try {
+      JSON.parse(value);
+      setUiSchemaError('');
+    } catch (e) {
+      setUiSchemaError('Invalid JSON');
+    }
+  };
+
   const clearData = () => {
     clearStoreData();
   };
@@ -161,12 +260,12 @@ export const JsonFormsDemo: FC = () => {
   const handleSubmit = () => {
     // Remove File objects for validation
     const dataForValidation = Object.fromEntries(
-      Object.entries(data).filter(([_, v]) => !(v instanceof File))
+      Object.entries(data).filter(([_, v]) => !(v instanceof File)),
     );
-    
+
     const validate = ajv.compile(schema);
     const valid = validate(dataForValidation);
-    
+
     if (!valid) {
       const errorMessages = (validate.errors || []).map(
         err => err.message || `${err.instancePath || 'Field'} ${err.keyword}`,
@@ -191,16 +290,27 @@ export const JsonFormsDemo: FC = () => {
     }
   };
 
+  const formatAndSaveUiSchema = () => {
+    try {
+      const parsed = JSON.parse(uiSchemaInput);
+      setUiSchemaInput(JSON.stringify(parsed, null, 2));
+      setUiSchema(parsed);
+      setUiSchemaError('');
+    } catch (e) {
+      setUiSchemaError('Invalid JSON');
+    }
+  };
+
   return (
     <Grid container spacing={2} style={classes.container}>
-      <Grid size={{ sm: 4 }}>
+      <Grid size={{ sm: 3 }}>
         <Typography variant={'h5'} mb={1}>
           JSON Schema
         </Typography>
         <TextField
           multiline
           fullWidth
-          rows={30}
+          rows={20}
           value={jsonInput}
           onChange={e => handleJsonChange(e.target.value)}
           error={!!error}
@@ -215,15 +325,51 @@ export const JsonFormsDemo: FC = () => {
           onClick={formatAndSave}
           color="primary"
           variant="contained">
-          Format & Save
+          Format & Save Schema
+        </Button>
+
+        <Typography variant={'h5'} mb={1} mt={3}>
+          UI Schema (Rules)
+        </Typography>
+        <TextField
+          multiline
+          fullWidth
+          rows={20}
+          value={uiSchemaInput}
+          onChange={e => handleUiSchemaChange(e.target.value)}
+          error={!!uiSchemaError}
+          helperText={uiSchemaError}
+          spellCheck={false}
+          slotProps={{
+            input: { style: { fontFamily: 'monospace', fontSize: '12px' } },
+          }}
+        />
+        <Button
+          style={classes.resetButton}
+          onClick={formatAndSaveUiSchema}
+          color="primary"
+          variant="contained">
+          Format & Save UI Schema
         </Button>
       </Grid>
-      <Grid size={{ sm: 4 }}>
+      <Grid size={{ sm: 5 }}>
         <Typography variant={'h5'}>Rendered Form</Typography>
+        {isLoadingWorkflows && (
+          <Alert severity="info" style={{ marginBottom: '1rem' }}>
+            <CircularProgress size={16} style={{ marginRight: '8px' }} />
+            Loading workflow options from API...
+          </Alert>
+        )}
         <div style={classes.demoform}>
+          {console.log('🎨 Rendering JsonForms with schema:', schema)}
+          {console.log(
+            '🎨 workflowId in render:',
+            schema?.properties?.workflowId,
+          )}
           <JsonForms
-            key={JSON.stringify(schema)}
+            key={JSON.stringify(schema) + JSON.stringify(uiSchema)}
             schema={schema}
+            uischema={uiSchema}
             data={data}
             renderers={renderers}
             cells={materialCells}
@@ -250,7 +396,11 @@ export const JsonFormsDemo: FC = () => {
             onClick={handleSubmit}
             disabled={submitMutation.isPending}
             style={{ marginTop: '1rem' }}>
-            {submitMutation.isPending ? <CircularProgress size={24} /> : 'Submit'}
+            {submitMutation.isPending ? (
+              <CircularProgress size={24} />
+            ) : (
+              'Submit'
+            )}
           </Button>
         </div>
       </Grid>

@@ -1,0 +1,170 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Group",
+      "label": "Personal Information",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/name"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/email"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/password"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/age"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/isAdult"
+        }
+      ]
+    },
+    {
+      "type": "Group",
+      "label": "Location (State enabled for USA/Canada only)",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/country"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/state",
+          "rule": {
+            "effect": "ENABLE",
+            "condition": {
+              "scope": "#/properties/country",
+              "schema": {
+                "enum": ["USA", "Canada"]
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "Group",
+      "label": "Age-Restricted Features (Age ≥ 18)",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/profilePicture",
+          "rule": {
+            "effect": "ENABLE",
+            "condition": {
+              "scope": "#/properties/age",
+              "schema": {
+                "minimum": 18
+              }
+            }
+          }
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/drivingLicense",
+          "rule": {
+            "effect": "ENABLE",
+            "condition": {
+              "scope": "#/properties/age",
+              "schema": {
+                "minimum": 16
+              }
+            }
+          }
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/alcoholConsent",
+          "rule": {
+            "effect": "SHOW",
+            "condition": {
+              "scope": "#/properties/age",
+              "schema": {
+                "minimum": 21
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "Group",
+      "label": "Payment (Shown when adult checkbox is checked)",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/creditCard",
+          "rule": {
+            "effect": "SHOW",
+            "condition": {
+              "scope": "#/properties/isAdult",
+              "schema": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "Group",
+      "label": "Additional Settings",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/done",
+          "label": "I accept terms and conditions"
+        },
+        {
+          "type": "HorizontalLayout",
+          "elements": [
+            {
+              "type": "Control",
+              "scope": "#/properties/due_date"
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/rating"
+            }
+          ]
+        },
+        {
+          "type": "HorizontalLayout",
+          "elements": [
+            {
+              "type": "Control",
+              "scope": "#/properties/recurrence"
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/recurrence_interval",
+              "rule": {
+                "effect": "HIDE",
+                "condition": {
+                  "type": "LEAF",
+                  "scope": "#/properties/recurrence",
+                  "expectedValue": "Never"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/description",
+          "options": {
+            "multi": true
+          }
+        }
+      ]
+    }
+  ]
+}

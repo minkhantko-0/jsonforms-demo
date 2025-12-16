@@ -5,16 +5,19 @@ A dynamic form builder application that generates forms from JSON schemas with r
 ## Features
 
 - **Dynamic Form Generation**: Create forms from JSON Schema definitions
+- **Conditional Field Logic**: Dynamic enable/disable of fields based on conditions (age, values, etc.)
 - **Custom Renderers**: Star rating, age slider, and file upload components
 - **File Upload**: UploadThing integration for image and PDF uploads
 - **Real-time Validation**: Client and server-side validation with custom error messages
 - **Server-Sent Events**: Async processing with SSE notifications
 - **Data Persistence**: MySQL database with Drizzle ORM
 - **View Submissions**: Expandable table view of all submitted data
+- **Live Schema Editing**: Edit both JSON Schema and UI Schema with live preview
 
 ## Tech Stack
 
 **Frontend:**
+
 - React 18 + TypeScript
 - JSON Forms (Material-UI renderers)
 - TanStack Query (React Query)
@@ -24,6 +27,7 @@ A dynamic form builder application that generates forms from JSON schemas with r
 - Vite
 
 **Backend:**
+
 - Hono (API framework)
 - Drizzle ORM
 - MySQL 8.0
@@ -34,30 +38,36 @@ A dynamic form builder application that generates forms from JSON schemas with r
 ## Setup Instructions
 
 ### Prerequisites
+
 - Node.js 20+
 - Docker & Docker Compose
 
 ### 1. Clone Repository
+
 ```bash
 git clone <repository-url>
 cd demo-json-forms
 ```
 
 ### 2. Start MySQL Database
+
 ```bash
 cd server
 docker-compose up -d
 ```
 
 ### 3. Configure UploadThing
+
 ```bash
 # Create .env file in server directory
 cd server
 echo UPLOADTHING_TOKEN=your_token_here > .env
 ```
+
 Get your token from https://uploadthing.com
 
 ### 4. Setup Backend
+
 ```bash
 # Install dependencies
 npm install
@@ -70,6 +80,7 @@ npm run dev
 ```
 
 ### 5. Setup Frontend
+
 ```bash
 # In root directory
 npm install
@@ -79,23 +90,59 @@ npm run dev
 ```
 
 ### 6. Access Application
+
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:3001
 
 ## Usage
 
 ### Creating Forms
+
 1. Edit JSON Schema in the left panel
-2. Click "Format & Save" to update the form
-3. Fill out the generated form in the middle panel
-4. View bound data in the right panel
+2. Edit UI Schema in the left panel to add conditional rules
+3. Click "Format & Save Schema" and "Format & Save UI Schema" to update the form
+4. Fill out the generated form in the middle panel
+5. View bound data in the right panel
+
+### Conditional Fields ⚡ NEW
+
+Create dynamic forms where fields are enabled/disabled based on other field values!
+
+**Quick Example:** Profile Picture field is disabled until user enters age ≥ 18
+
+```json
+{
+  "type": "Control",
+  "scope": "#/properties/profilePicture",
+  "rule": {
+    "effect": "ENABLE",
+    "condition": {
+      "scope": "#/properties/age",
+      "schema": { "minimum": 18 }
+    }
+  }
+}
+```
+
+**See full documentation:** `CONDITIONAL_FIELDS_GUIDE.md`
+
+**Effect Types:**
+
+- `ENABLE` - Disabled until condition met
+- `DISABLE` - Enabled until condition met
+- `SHOW` - Hidden until condition met
+- `HIDE` - Visible until condition met
+
+**Try it now:** Load advanced examples from `src/data/schema-example-advanced.json` and `src/data/uischema-example-advanced.json`
 
 ### Custom Renderers
+
 - Fields ending with `rating` → Star rating component
 - Fields ending with `age` → Slider component
 - Fields with `format: "data-url"` → File upload component
 
 ### Submitting Data
+
 1. Fill out the form
 2. Click "Submit"
 3. Wait for validation
@@ -104,6 +151,7 @@ npm run dev
 6. Second toast notification appears
 
 ### Viewing Submissions
+
 1. Click "View Submissions" button
 2. See list of all submissions
 3. Click arrow icon to expand and view full data
@@ -194,6 +242,7 @@ Files are uploaded to UploadThing and URLs are stored in the database.
 ## Environment Variables
 
 ### Server (.env)
+
 ```
 UPLOADTHING_TOKEN=your_uploadthing_token
 ```

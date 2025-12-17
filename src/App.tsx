@@ -3,13 +3,16 @@ import { Header } from './components/Header';
 import { JsonFormsDemo } from './components/JsonFormsDemo';
 import { ViewSubmissions } from './components/ViewSubmissions';
 import { Notifications } from './components/Notifications';
+import { AuthorizedWorkflows } from './components/AuthorizedWorkflows';
 import { useState } from 'react';
 import { Button, Box, Badge } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { useNotificationStream } from './hooks/useNotificationStream';
 
 const App = () => {
-  const [page, setPage] = useState<'form' | 'view' | 'notifications'>('form');
+  const [page, setPage] = useState<
+    'form' | 'view' | 'notifications' | 'workflows'
+  >('form');
   useNotificationStream();
 
   const { data: notifications = [] } = useQuery({
@@ -45,10 +48,16 @@ const App = () => {
             Notifications
           </Button>
         </Badge>
+        <Button
+          variant={page === 'workflows' ? 'contained' : 'outlined'}
+          onClick={() => setPage('workflows')}>
+          View Submissions
+        </Button>
       </Box>
       {page === 'form' && <JsonFormsDemo />}
       {page === 'view' && <ViewSubmissions />}
       {page === 'notifications' && <Notifications />}
+      {page === 'workflows' && <AuthorizedWorkflows />}
     </div>
   );
 };

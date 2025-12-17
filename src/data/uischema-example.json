@@ -1,0 +1,107 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Group",
+      "label": "Basic Information",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/name"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/email"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/password"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/age"
+        }
+      ]
+    },
+    {
+      "type": "Group",
+      "label": "Adult-Only Features (Enabled when age ≥ 18)",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/profilePicture",
+          "rule": {
+            "effect": "ENABLE",
+            "condition": {
+              "scope": "#/properties/age",
+              "schema": {
+                "minimum": 18
+              }
+            }
+          }
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/done",
+          "label": "I accept terms and conditions",
+          "rule": {
+            "effect": "ENABLE",
+            "condition": {
+              "scope": "#/properties/age",
+              "schema": {
+                "minimum": 18
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "Group",
+      "label": "Additional Settings",
+      "elements": [
+        {
+          "type": "HorizontalLayout",
+          "elements": [
+            {
+              "type": "Control",
+              "scope": "#/properties/due_date"
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/rating"
+            }
+          ]
+        },
+        {
+          "type": "HorizontalLayout",
+          "elements": [
+            {
+              "type": "Control",
+              "scope": "#/properties/recurrence"
+            },
+            {
+              "type": "Control",
+              "scope": "#/properties/recurrence_interval",
+              "rule": {
+                "effect": "HIDE",
+                "condition": {
+                  "type": "LEAF",
+                  "scope": "#/properties/recurrence",
+                  "expectedValue": "Never"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/description",
+          "options": {
+            "multi": true
+          }
+        }
+      ]
+    }
+  ]
+}

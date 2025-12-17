@@ -1,4 +1,4 @@
-version: "3.8"
+version: '3.8'
 
 services:
   mysql:
@@ -7,7 +7,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: formdata
     ports:
-      - "3306:3306"
+      - '3307:3306'
     volumes:
       - mysql_data:/var/lib/mysql
 

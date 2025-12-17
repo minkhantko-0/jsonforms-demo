@@ -5,8 +5,15 @@ import { cors } from 'hono/cors';
 import { submitHandler } from './routes/submit';
 import { getSubmissionsHandler } from './routes/submissions';
 import { eventsHandler } from './routes/events';
-import { getNotificationsHandler, createNotificationHandler, markAsReadHandler, deleteNotificationHandler, markAllAsReadHandler } from './routes/notifications';
+import {
+  getNotificationsHandler,
+  createNotificationHandler,
+  markAsReadHandler,
+  deleteNotificationHandler,
+  markAllAsReadHandler,
+} from './routes/notifications';
 import { notificationStreamHandler } from './routes/notificationStream';
+import { getWorkflowsHandler } from './routes/workflows';
 
 const app = new Hono();
 
@@ -21,6 +28,7 @@ app.patch('/api/notifications/:id/read', markAsReadHandler);
 app.patch('/api/notifications/read-all', markAllAsReadHandler);
 app.delete('/api/notifications/:id', deleteNotificationHandler);
 app.get('/api/notifications/stream', notificationStreamHandler);
+app.get('/api/workflows', getWorkflowsHandler);
 
 serve({ fetch: app.fetch, port: 3001 });
 console.log('Server running on http://localhost:3001');

@@ -6,6 +6,7 @@ export default {
   driver: 'mysql2',
   dbCredentials: {
     host: 'localhost',
+    port: 3307,
     user: 'root',
     password: 'root',
     database: 'formdata',

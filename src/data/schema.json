@@ -1,84 +1,31 @@
 {
   "type": "object",
   "properties": {
-    "name": {
+    "requiresApproval": {
+      "type": "boolean",
+      "title": "Requires Approval Workflow",
+      "default": false
+    },
+    "workflowId": {
       "type": "string",
-      "minLength": 3,
-      "maxLength": 50,
-      "errorMessage": {
-        "minLength": "Name must be at least 3 characters",
-        "maxLength": "Name cannot exceed 50 characters"
-      }
+      "title": "Workflow ID"
     },
-    "email": {
-      "type": "string",
-      "format": "email",
-      "errorMessage": {
-        "format": "Please enter a valid email address"
-      }
-    },
-    "password": {
-      "type": "string",
-      "minLength": 8,
-      "pattern": "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$",
-      "errorMessage": {
-        "minLength": "Password must be at least 8 characters",
-        "pattern": "Password must contain letters and numbers"
-      }
-    },
-    "age": {
-      "type": "integer",
-      "minimum": 18,
-      "maximum": 120,
-      "errorMessage": {
-        "minimum": "Age must be at least 18",
-        "maximum": "Age cannot exceed 120"
-      }
-    },
-    "description": {
-      "title": "Long Description",
-      "type": "string"
-    },
-    "done": {
-      "type": "boolean"
-    },
-    "due_date": {
-      "type": "string",
-      "format": "date",
-      "errorMessage": {
-        "format": "Please enter a valid date"
-      }
-    },
-    "rating": {
-      "type": "integer",
-      "maximum": 5,
-      "errorMessage": {
-        "maximum": "Rating cannot exceed 5"
-      }
-    },
-    "recurrence": {
-      "type": "string",
-      "enum": ["Never", "Daily", "Weekly", "Monthly"]
-    },
-    "recurrence_interval": {
-      "type": "integer",
-      "minimum": 1,
-      "errorMessage": {
-        "minimum": "Interval must be at least 1"
-      }
-    },
-    "profilePicture": {
+    "filePicker": {
       "type": "string",
       "format": "data-url",
-      "title": "Profile Picture"
+      "title": "Upload Document",
+      "maxLength": 5242880,
+      "pattern": ".*\\.csv$",
+      "errorMessage": {
+        "pattern": "Only CSV files are allowed",
+        "maxLength": "File size must be less than 5MB"
+      }
     }
   },
-  "required": ["name", "email", "password"],
+  "required": ["filePicker"],
   "errorMessage": {
     "required": {
-      "name": "Name is required",
-      "email": "Email is required",
-      "password": "Password is required"
+      "filePicker": "File upload is required"
     }
   }
 }

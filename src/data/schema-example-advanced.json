@@ -1,0 +1,119 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 50,
+      "title": "Full Name",
+      "errorMessage": {
+        "minLength": "Name must be at least 3 characters",
+        "maxLength": "Name cannot exceed 50 characters"
+      }
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "title": "Email Address",
+      "errorMessage": {
+        "format": "Please enter a valid email address"
+      }
+    },
+    "password": {
+      "type": "string",
+      "minLength": 8,
+      "pattern": "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,}$",
+      "title": "Password",
+      "errorMessage": {
+        "minLength": "Password must be at least 8 characters",
+        "pattern": "Password must contain letters and numbers"
+      }
+    },
+    "age": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 120,
+      "title": "Age",
+      "errorMessage": {
+        "minimum": "Age must be 0 or greater",
+        "maximum": "Age cannot exceed 120"
+      }
+    },
+    "isAdult": {
+      "type": "boolean",
+      "title": "I am 18 or older"
+    },
+    "country": {
+      "type": "string",
+      "title": "Country",
+      "enum": ["USA", "Canada", "UK", "Germany", "France", "Other"]
+    },
+    "state": {
+      "type": "string",
+      "title": "State/Province"
+    },
+    "drivingLicense": {
+      "type": "string",
+      "title": "Driving License Number",
+      "minLength": 5
+    },
+    "alcoholConsent": {
+      "type": "boolean",
+      "title": "I consent to purchase alcohol"
+    },
+    "creditCard": {
+      "type": "string",
+      "title": "Credit Card Number",
+      "pattern": "^[0-9]{16}$"
+    },
+    "description": {
+      "title": "Additional Comments",
+      "type": "string"
+    },
+    "done": {
+      "type": "boolean",
+      "title": "I accept terms and conditions"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Due Date",
+      "errorMessage": {
+        "format": "Please enter a valid date"
+      }
+    },
+    "rating": {
+      "type": "integer",
+      "maximum": 5,
+      "title": "Rating",
+      "errorMessage": {
+        "maximum": "Rating cannot exceed 5"
+      }
+    },
+    "recurrence": {
+      "type": "string",
+      "title": "Recurrence",
+      "enum": ["Never", "Daily", "Weekly", "Monthly"]
+    },
+    "recurrence_interval": {
+      "type": "integer",
+      "minimum": 1,
+      "title": "Recurrence Interval",
+      "errorMessage": {
+        "minimum": "Interval must be at least 1"
+      }
+    },
+    "profilePicture": {
+      "type": "string",
+      "format": "data-url",
+      "title": "Profile Picture"
+    }
+  },
+  "required": ["name", "email"],
+  "errorMessage": {
+    "required": {
+      "name": "Name is required",
+      "email": "Email is required"
+    }
+  }
+}

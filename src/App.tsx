@@ -5,15 +5,17 @@ import { ViewSubmissions } from './components/ViewSubmissions';
 import { Notifications } from './components/Notifications';
 import { AuthorizedWorkflows } from './components/AuthorizedWorkflows';
 import { useState } from 'react';
-import { Button, Box, Badge } from '@mui/material';
+import { Button, Box, Badge, Tooltip } from '@mui/material';
 import { useQuery } from '@tanstack/react-query';
 import { useNotificationStream } from './hooks/useNotificationStream';
+import WifiIcon from '@mui/icons-material/Wifi';
+import WifiOffIcon from '@mui/icons-material/WifiOff';
 
 const App = () => {
   const [page, setPage] = useState<
     'form' | 'view' | 'notifications' | 'workflows'
   >('form');
-  useNotificationStream();
+  const { isConnected } = useNotificationStream();
 
   const { data: notifications = [] } = useQuery({
     queryKey: ['notifications'],
@@ -22,7 +24,6 @@ const App = () => {
       const result = await response.json();
       return result.success ? result.data : [];
     },
-    refetchInterval: 5000,
   });
 
   const unreadCount = notifications.filter((n: any) => !n.isRead).length;
@@ -30,7 +31,16 @@ const App = () => {
   return (
     <div className="App">
       <Header />
-      <Box display="flex" justifyContent="center" gap={2} p={2}>
+      <Box display="flex" justifyContent="center" alignItems="center" gap={2} p={2}>
+        <Tooltip title={isConnected ? 'Connected' : 'Reconnecting...'}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {isConnected ? (
+              <WifiIcon color="success" />
+            ) : (
+              <WifiOffIcon color="warning" />
+            )}
+          </Box>
+        </Tooltip>
         <Button
           variant={page === 'form' ? 'contained' : 'outlined'}
           onClick={() => setPage('form')}>

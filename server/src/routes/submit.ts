@@ -1,6 +1,25 @@
 import { Context } from 'hono';
 import { jsonSchemaToZod } from 'json-schema-to-zod';
 import { z } from 'zod';
+import { db } from '../db/index';
+import { notifications } from '../db/schema';
+import { broadcastNotification } from './notificationStream';
+
+const createNotification = async (title: string, message: string) => {
+  try {
+    const result = await db.insert(notifications).values({ title, message });
+    const newNotification = {
+      id: result[0].insertId,
+      title,
+      message,
+      isRead: false,
+      createdAt: new Date(),
+    };
+    await broadcastNotification(newNotification);
+  } catch (err) {
+    console.error('Failed to create notification:', err);
+  }
+};
 
 export const pendingSubmissions = new Map<
   string,
@@ -35,8 +54,10 @@ export const submitHandler = async (c: Context) => {
       formData: formData || undefined,
     });
 
+    await createNotification('Form Accepted', 'Form data validated and accepted for processing');
     return c.json({ success: true, sessionId });
   } catch (error: any) {
+    await createNotification('Validation Error', error.message);
     return c.json({ success: false, error: error.message }, 400);
   }
 };

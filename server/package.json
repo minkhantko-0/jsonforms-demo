@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "db:push": "drizzle-kit push:mysql"
+    "db:push": "drizzle-kit push:mysql",
+    "db:generate": "drizzle-kit generate:mysql",
+    "db:migrate": "tsx src/db/migrate.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.0.0",

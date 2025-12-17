@@ -1,9 +1,26 @@
 import { Context } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import { db } from '../db/index';
-import { submissions } from '../db/schema';
+import { submissions, notifications } from '../db/schema';
 import { uploadFile, deleteFile } from '../services/fileUpload';
 import { pendingSubmissions } from './submit';
+import { broadcastNotification } from './notificationStream';
+
+const createNotification = async (title: string, message: string) => {
+  try {
+    const result = await db.insert(notifications).values({ title, message });
+    const newNotification = {
+      id: result[0].insertId,
+      title,
+      message,
+      isRead: false,
+      createdAt: new Date(),
+    };
+    await broadcastNotification(newNotification);
+  } catch (err) {
+    console.error('Failed to create notification:', err);
+  }
+};
 
 export const eventsHandler = (c: Context) => {
   const sessionId = c.req.param('sessionId');
@@ -11,8 +28,10 @@ export const eventsHandler = (c: Context) => {
   return streamSSE(c, async (stream) => {
     const pending = pendingSubmissions.get(sessionId);
     if (!pending) {
+      const errorMsg = 'Session not found';
+      await createNotification('Error', errorMsg);
       await stream.writeSSE({
-        data: JSON.stringify({ message: 'Session not found' }),
+        data: JSON.stringify({ message: errorMsg }),
         event: 'error',
       });
       return;
@@ -26,8 +45,10 @@ export const eventsHandler = (c: Context) => {
         if (key !== 'data' && key !== 'schema' && value instanceof File) {
           const url = await uploadFile(value);
           if (!url) {
+            const errorMsg = 'File upload failed';
+            await createNotification('Upload Error', errorMsg);
             await stream.writeSSE({
-              data: JSON.stringify({ message: 'File upload failed' }),
+              data: JSON.stringify({ message: errorMsg }),
               event: 'error',
             });
             pendingSubmissions.delete(sessionId);
@@ -42,13 +63,17 @@ export const eventsHandler = (c: Context) => {
     await new Promise((resolve) => setTimeout(resolve, 7000));
 
     try {
-      await db.insert(submissions).values({
+      const result = await db.insert(submissions).values({
         data,
         formSchema: pending.schema,
       });
+      
+      await createNotification('Processing Success', `Form processed and saved successfully with ID: ${result[0].insertId}`);
     } catch (err) {
+      const errorMsg = 'Database insert failed';
+      await createNotification('Processing Failed', errorMsg);
       await stream.writeSSE({
-        data: JSON.stringify({ message: 'Database insert failed' }),
+        data: JSON.stringify({ message: errorMsg }),
         event: 'error',
       });
       pendingSubmissions.delete(sessionId);
@@ -59,8 +84,9 @@ export const eventsHandler = (c: Context) => {
     }
 
     pendingSubmissions.delete(sessionId);
+    const successMsg = 'Processing completed successfully!';
     await stream.writeSSE({
-      data: JSON.stringify({ message: 'Processing completed successfully!' }),
+      data: JSON.stringify({ message: successMsg }),
       event: 'complete',
     });
   });

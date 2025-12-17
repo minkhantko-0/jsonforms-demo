@@ -51,7 +51,7 @@ const App = () => {
         <Button
           variant={page === 'workflows' ? 'contained' : 'outlined'}
           onClick={() => setPage('workflows')}>
-          View Submissions
+          Workflow Management
         </Button>
       </Box>
       {page === 'form' && <JsonFormsDemo />}

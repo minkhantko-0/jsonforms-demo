@@ -13,7 +13,13 @@
     "filePicker": {
       "type": "string",
       "format": "data-url",
-      "title": "Upload Document"
+      "title": "Upload Document",
+      "maxLength": 5242880,
+      "pattern": ".*\\.csv$",
+      "errorMessage": {
+        "pattern": "Only CSV files are allowed",
+        "maxLength": "File size must be less than 5MB"
+      }
     }
   },
   "required": ["filePicker"],

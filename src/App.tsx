@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNotificationStream } from './hooks/useNotificationStream';
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
+import { Envs } from './utils/envs';
 
 const App = () => {
   const [page, setPage] = useState<
@@ -20,7 +21,7 @@ const App = () => {
   const { data: notifications = [] } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:3001/api/notifications');
+      const response = await fetch(`${Envs.API_URL}/api/notifications`);
       const result = await response.json();
       return result.success ? result.data : [];
     },
@@ -31,7 +32,12 @@ const App = () => {
   return (
     <div className="App">
       <Header />
-      <Box display="flex" justifyContent="center" alignItems="center" gap={2} p={2}>
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        gap={2}
+        p={2}>
         <Tooltip title={isConnected ? 'Connected' : 'Reconnecting...'}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             {isConnected ? (

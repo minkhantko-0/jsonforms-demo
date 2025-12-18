@@ -98,17 +98,18 @@ export const JsonFormsDemo: FC = () => {
         console.log('=== FETCHING WORKFLOWS FROM API ===');
         console.log('Current schema before API:', schema);
 
-        const response = await fetch(`${Envs.API_URL}/api/workflows`);
+        const response = await fetch(`${Envs.WORKFLOW_URL}/api/v1/workflows`);
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const workflows = await response.json();
+        const res = await response.json();
+        const workflows = res.data;
         console.log('✅ API Response - Workflows fetched:', workflows);
 
         // Assuming API returns: [{ id: "workflow-1", name: "Standard Approval" }, ...]
-        const enumValues = workflows.map((w: any) => w.id);
+        const enumValues = workflows.map((w: any) => w.key);
         const enumLabels = workflows.map((w: any) => w.name);
 
         console.log('📋 Extracted enum values:', enumValues);

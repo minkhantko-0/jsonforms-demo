@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
+import { Envs } from '../utils/envs';
 
 interface Notification {
   id: number;
@@ -29,7 +30,7 @@ export const Notifications: FC = () => {
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:3001/api/notifications');
+      const response = await fetch(`${Envs.API_URL}/api/notifications`);
       const result = await response.json();
       return result.success ? result.data : [];
     },
@@ -37,7 +38,7 @@ export const Notifications: FC = () => {
 
   const markAsReadMutation = useMutation({
     mutationFn: async (id: number) => {
-      await fetch(`http://localhost:3001/api/notifications/${id}/read`, {
+      await fetch(`${Envs.API_URL}/api/notifications/${id}/read`, {
         method: 'PATCH',
       });
     },
@@ -48,7 +49,7 @@ export const Notifications: FC = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      await fetch(`http://localhost:3001/api/notifications/${id}`, {
+      await fetch(`${Envs.API_URL}/api/notifications/${id}`, {
         method: 'DELETE',
       });
     },
@@ -59,7 +60,7 @@ export const Notifications: FC = () => {
 
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      await fetch('http://localhost:3001/api/notifications/read-all', {
+      await fetch(`${Envs.API_URL}/api/notifications/read-all`, {
         method: 'PATCH',
       });
     },
@@ -76,11 +77,17 @@ export const Notifications: FC = () => {
     );
   }
 
-  const unreadCount = notifications.filter((n: Notification) => !n.isRead).length;
+  const unreadCount = notifications.filter(
+    (n: Notification) => !n.isRead,
+  ).length;
 
   return (
     <Box p={3}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+      <Box
+        display="flex"
+        alignItems="center"
+        justifyContent="space-between"
+        mb={3}>
         <Box display="flex" alignItems="center" gap={2}>
           <Typography variant="h4">Notifications</Typography>
           {unreadCount > 0 && (
@@ -128,7 +135,9 @@ export const Notifications: FC = () => {
                 }
                 secondary={
                   <>
-                    <Typography variant="body2">{notification.message}</Typography>
+                    <Typography variant="body2">
+                      {notification.message}
+                    </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {new Date(notification.createdAt).toLocaleString()}
                     </Typography>

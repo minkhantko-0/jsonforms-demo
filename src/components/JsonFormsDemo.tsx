@@ -24,6 +24,7 @@ import fileUploadControlTester from '../testers/fileUploadControlTester';
 import defaultSchema from '../data/schema.json';
 import { CSSProperties } from '@mui/material';
 import { useFormStore } from '../store/formStore';
+import { Envs } from '../utils/envs';
 
 const classes = {
   container: {
@@ -97,7 +98,7 @@ export const JsonFormsDemo: FC = () => {
         console.log('=== FETCHING WORKFLOWS FROM API ===');
         console.log('Current schema before API:', schema);
 
-        const response = await fetch('http://localhost:3001/api/workflows');
+        const response = await fetch(`${Envs.API_URL}/api/workflows`);
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -138,8 +139,6 @@ export const JsonFormsDemo: FC = () => {
 
         // Verify after setting
         console.log('✅ Schema updated in store (editor unchanged)');
-
-        
       } catch (error) {
         console.error('❌ Failed to fetch workflow options:', error);
         enqueueSnackbar('Failed to load workflow options. Using defaults.', {
@@ -174,12 +173,12 @@ export const JsonFormsDemo: FC = () => {
         formData.append('data', JSON.stringify(cleanData));
         formData.append('schema', JSON.stringify(schema));
 
-        response = await fetch('http://localhost:3001/api/submit', {
+        response = await fetch(`${Envs.API_URL}/api/submit`, {
           method: 'POST',
           body: formData,
         });
       } else {
-        response = await fetch('http://localhost:3001/api/submit', {
+        response = await fetch(`${Envs.API_URL}/api/submit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data, schema }),
@@ -195,7 +194,7 @@ export const JsonFormsDemo: FC = () => {
 
         // Listen for SSE
         const eventSource = new EventSource(
-          `http://localhost:3001/api/events/${result.sessionId}`,
+          `${Envs.API_URL}/api/events/${result.sessionId}`,
         );
 
         eventSource.addEventListener('complete', event => {

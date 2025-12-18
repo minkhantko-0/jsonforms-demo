@@ -62,6 +62,7 @@ export const submitHandler = async (c: Context) => {
     });
 
     await createNotification('Form Accepted', 'Form data validated and accepted for processing');
+    await new Promise(resolve => setTimeout(resolve, 3000));
     return c.json({ success: true, sessionId });
   } catch (error: any) {
     await createNotification('Validation Error', error.message);

@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import { Envs } from '../utils/envs';
 
 interface Submission {
   id: number;
@@ -66,7 +67,7 @@ export const ViewSubmissions: FC = () => {
   const { data: submissions = [], isLoading } = useQuery({
     queryKey: ['submissions'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:3001/api/submissions');
+      const response = await fetch(`${Envs.API_URL}/api/submissions`);
       const result = await response.json();
       return result.success ? result.data : [];
     },
@@ -95,7 +96,7 @@ export const ViewSubmissions: FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {submissions.map((sub) => (
+            {submissions.map(sub => (
               <Row key={sub.id} submission={sub} />
             ))}
           </TableBody>

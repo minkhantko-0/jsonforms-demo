@@ -20,6 +20,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import { Envs } from '../utils/envs';
 
 interface Role {
   id: string;
@@ -76,7 +77,7 @@ export const AuthorizedWorkflows = () => {
     const fetchRoles = async () => {
       try {
         setLoadingRoles(true);
-        const response = await fetch('http://localhost:3002/api/v1/roles');
+        const response = await fetch(`${Envs.WORKFLOW_URL}/api/v1/roles`);
         if (!response.ok) {
           throw new Error('Failed to fetch roles');
         }
@@ -92,12 +93,16 @@ export const AuthorizedWorkflows = () => {
     fetchRoles();
   }, []);
 
-  const fetchTasksForRole = async (roleKey: string, roleId: string, force = false) => {
+  const fetchTasksForRole = async (
+    roleKey: string,
+    roleId: string,
+    force = false,
+  ) => {
     if (!force && tasks[roleId]) return; // Already fetched
-    
+
     try {
       setLoadingTasks(prev => ({ ...prev, [roleId]: true }));
-      const response = await fetch('http://localhost:3002/api/v1/tasks', {
+      const response = await fetch(`${Envs.WORKFLOW_URL}/api/v1/tasks`, {
         headers: {
           'x-role-id': roleKey,
         },
@@ -116,28 +121,38 @@ export const AuthorizedWorkflows = () => {
     }
   };
 
-  const handleAccordionChange = (roleKey: string, roleId: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
-    setExpandedRole(isExpanded ? roleId : false);
-    if (isExpanded) {
-      fetchTasksForRole(roleKey, roleId);
-    }
-  };
+  const handleAccordionChange =
+    (roleKey: string, roleId: string) =>
+    (event: React.SyntheticEvent, isExpanded: boolean) => {
+      setExpandedRole(isExpanded ? roleId : false);
+      if (isExpanded) {
+        fetchTasksForRole(roleKey, roleId, true);
+      }
+    };
 
-  const handleApprove = async (roleKey: string, roleId: string, taskId: string, instanceId: string) => {
+  const handleApprove = async (
+    roleKey: string,
+    roleId: string,
+    taskId: string,
+    instanceId: string,
+  ) => {
     try {
-      const response = await fetch(`http://localhost:3002/api/v1/tasks/${taskId}/complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-role-id': roleKey,
+      const response = await fetch(
+        `${Envs.WORKFLOW_URL}/api/v1/tasks/${taskId}/complete`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-role-id': roleKey,
+          },
+          body: JSON.stringify({
+            isApproved: true,
+            remark: 'Approved',
+            instanceId: instanceId,
+          }),
         },
-        body: JSON.stringify({
-          isApproved: true,
-          remark: 'Approved',
-          instanceId: instanceId,
-        }),
-      });
-      
+      );
+
       if (response.ok) {
         // Force refresh tasks for this role
         await fetchTasksForRole(roleKey, roleId, true);
@@ -147,21 +162,29 @@ export const AuthorizedWorkflows = () => {
     }
   };
 
-  const handleReject = async (roleKey: string, roleId: string, taskId: string, instanceId: string) => {
+  const handleReject = async (
+    roleKey: string,
+    roleId: string,
+    taskId: string,
+    instanceId: string,
+  ) => {
     try {
-      const response = await fetch(`http://localhost:3002/api/v1/tasks/${taskId}/complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-role-id': roleKey,
+      const response = await fetch(
+        `${Envs.WORKFLOW_URL}/api/v1/tasks/${taskId}/complete`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-role-id': roleKey,
+          },
+          body: JSON.stringify({
+            isApproved: false,
+            remark: 'Rejected',
+            instanceId: instanceId,
+          }),
         },
-        body: JSON.stringify({
-          isApproved: false,
-          remark: 'Rejected',
-          instanceId: instanceId,
-        }),
-      });
-      
+      );
+
       if (response.ok) {
         // Force refresh tasks for this role
         await fetchTasksForRole(roleKey, roleId, true);
@@ -218,19 +241,19 @@ export const AuthorizedWorkflows = () => {
                   <Typography variant="h5" component="div">
                     {role.name}
                   </Typography>
-                  <Chip 
-                    label={role.key} 
-                    size="small" 
-                    variant="outlined" 
+                  <Chip
+                    label={role.key}
+                    size="small"
+                    variant="outlined"
                     color="primary"
                     sx={{ mt: 1 }}
                   />
                 </Box>
               </Box>
-              
+
               <Divider sx={{ my: 2 }} />
-              
-              <Accordion 
+
+              <Accordion
                 expanded={expandedRole === role.id}
                 onChange={handleAccordionChange(role.key, role.id)}
                 elevation={0}
@@ -273,44 +296,69 @@ export const AuthorizedWorkflows = () => {
                             borderColor: 'divider',
                           }}>
                           <Box mb={2}>
-                            <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                            <Typography
+                              variant="subtitle2"
+                              fontWeight="bold"
+                              gutterBottom>
                               Workflow: {task.workflowId}
                             </Typography>
-                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              gutterBottom>
                               Instance ID: {task.instanceId}
                             </Typography>
                             {task.inputs.request && (
-                              <Typography variant="body2" color="text.secondary" gutterBottom>
-                                File: {task.inputs.request.fileName} ({task.inputs.request.path})
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                gutterBottom>
+                                File: {task.inputs.request.fileName} (
+                                {task.inputs.request.path})
                               </Typography>
                             )}
                           </Box>
-                          
-                          <Stack direction="row" spacing={1} mb={2} flexWrap="wrap">
-                            <Chip 
-                              label={task.status} 
-                              size="small" 
-                              color={task.status === 'pending' ? 'warning' : 'default'}
+
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            mb={2}
+                            flexWrap="wrap">
+                            <Chip
+                              label={task.status}
+                              size="small"
+                              color={
+                                task.status === 'pending'
+                                  ? 'warning'
+                                  : 'default'
+                              }
                             />
-                            <Chip 
-                              label={`By: ${task.createdBy}`} 
-                              size="small" 
+                            <Chip
+                              label={`By: ${task.createdBy}`}
+                              size="small"
                               variant="outlined"
                             />
-                            <Chip 
-                              label={new Date(task.createdAt).toLocaleString()} 
-                              size="small" 
+                            <Chip
+                              label={new Date(task.createdAt).toLocaleString()}
+                              size="small"
                               variant="outlined"
                             />
                           </Stack>
-                          
+
                           <Stack direction="row" spacing={1}>
                             <Button
                               size="small"
                               variant="contained"
                               color="success"
                               startIcon={<CheckCircleIcon />}
-                              onClick={() => handleApprove(role.key, role.id, task.id, task.instanceId)}>
+                              onClick={() =>
+                                handleApprove(
+                                  role.key,
+                                  role.id,
+                                  task.id,
+                                  task.instanceId,
+                                )
+                              }>
                               Approve
                             </Button>
                             <Button
@@ -318,7 +366,14 @@ export const AuthorizedWorkflows = () => {
                               variant="contained"
                               color="error"
                               startIcon={<CancelIcon />}
-                              onClick={() => handleReject(role.key, role.id, task.id, task.instanceId)}>
+                              onClick={() =>
+                                handleReject(
+                                  role.key,
+                                  role.id,
+                                  task.id,
+                                  task.instanceId,
+                                )
+                              }>
                               Reject
                             </Button>
                           </Stack>
@@ -337,9 +392,7 @@ export const AuthorizedWorkflows = () => {
         ))}
       </Stack>
 
-      {roles.length === 0 && (
-        <Alert severity="info">No roles available</Alert>
-      )}
+      {roles.length === 0 && <Alert severity="info">No roles available</Alert>}
     </Box>
   );
 };

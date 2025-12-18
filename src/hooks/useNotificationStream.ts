@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSnackbar } from 'notistack';
+import { Envs } from '../utils/envs';
 
 let globalEventSource: EventSource | null = null;
 let globalIsConnected = false;
-let listeners: Set<(connected: boolean) => void> = new Set();
+const listeners: Set<(connected: boolean) => void> = new Set();
 let reconnectTimeout: NodeJS.Timeout | null = null;
 let reconnectAttempts = 0;
 
@@ -27,14 +28,16 @@ export const useNotificationStream = () => {
         console.log('Already connected');
         return;
       }
-      
+
       if (globalEventSource) {
         globalEventSource.close();
         globalEventSource = null;
       }
 
       console.log('Creating new SSE connection...');
-      const eventSource = new EventSource('http://localhost:3001/api/notifications/stream');
+      const eventSource = new EventSource(
+        `${Envs.API_URL}/api/notifications/stream`,
+      );
       globalEventSource = eventSource;
 
       eventSource.addEventListener('ping', () => {
@@ -45,28 +48,28 @@ export const useNotificationStream = () => {
         }
       });
 
-      eventSource.addEventListener('notification', (event) => {
+      eventSource.addEventListener('notification', event => {
         const notification = JSON.parse(event.data);
-        enqueueSnackbar(notification.message, { 
+        enqueueSnackbar(notification.message, {
           variant: 'info',
           autoHideDuration: 5000,
         });
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
       });
 
-      eventSource.onerror = (e) => {
+      eventSource.onerror = e => {
         console.log('SSE error, readyState:', eventSource.readyState);
-        
+
         if (eventSource.readyState === EventSource.CLOSED) {
           listeners.forEach(fn => fn(false));
-          
+
           if (reconnectTimeout) clearTimeout(reconnectTimeout);
-          
+
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
           reconnectAttempts++;
-          
+
           console.log(`Reconnecting in ${delay}ms...`);
-          
+
           reconnectTimeout = setTimeout(() => {
             connect();
           }, delay);

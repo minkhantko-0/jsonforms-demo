@@ -6,20 +6,26 @@ const clients = new Set<ReadableStreamDefaultController>();
 export const notificationStreamHandler = (c: Context) => {
   return streamSSE(c, async (stream) => {
     clients.add(stream);
+    console.log('New SSE client connected. Total clients:', clients.size);
+
+    // Send initial ping to confirm connection
+    await stream.writeSSE({ data: 'connected', event: 'ping' });
 
     stream.onAbort(() => {
+      console.log('SSE client disconnected. Remaining clients:', clients.size - 1);
       clients.delete(stream);
     });
 
-    // Keep connection alive
-    const keepAlive = setInterval(async () => {
+    // Keep connection alive with ping every 30 seconds
+    while (true) {
+      await stream.sleep(30000);
       try {
         await stream.writeSSE({ data: 'ping', event: 'ping' });
       } catch {
-        clearInterval(keepAlive);
         clients.delete(stream);
+        break;
       }
-    }, 30000);
+    }
   });
 };
 

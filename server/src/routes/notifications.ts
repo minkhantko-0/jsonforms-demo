@@ -6,7 +6,10 @@ import { broadcastNotification } from './notificationStream';
 
 export const getNotificationsHandler = async (c: Context) => {
   try {
-    const allNotifications = await db.select().from(notifications).orderBy(desc(notifications.createdAt));
+    const allNotifications = await db
+      .select()
+      .from(notifications)
+      .orderBy(desc(notifications.createdAt));
     return c.json({ success: true, data: allNotifications });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 500);
@@ -24,6 +27,7 @@ export const createNotificationHandler = async (c: Context) => {
       isRead: false,
       createdAt: new Date(),
     };
+    console.log('newNotification', newNotification);
     await broadcastNotification(newNotification);
     return c.json({ success: true, id: result[0].insertId });
   } catch (error: any) {
@@ -34,7 +38,10 @@ export const createNotificationHandler = async (c: Context) => {
 export const markAsReadHandler = async (c: Context) => {
   try {
     const id = parseInt(c.req.param('id'));
-    await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
+    await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(eq(notifications.id, id));
     return c.json({ success: true });
   } catch (error: any) {
     return c.json({ success: false, error: error.message }, 400);

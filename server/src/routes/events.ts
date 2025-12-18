@@ -22,21 +22,17 @@ const createNotification = async (title: string, message: string) => {
   }
 };
 
-export const eventsHandler = (c: Context) => {
+export const eventsHandler = async (c: Context) => {
   const sessionId = c.req.param('sessionId');
 
-  return streamSSE(c, async (stream) => {
-    const pending = pendingSubmissions.get(sessionId);
-    if (!pending) {
-      const errorMsg = 'Session not found';
-      await createNotification('Error', errorMsg);
-      await stream.writeSSE({
-        data: JSON.stringify({ message: errorMsg }),
-        event: 'error',
-      });
-      return;
-    }
+  const pending = pendingSubmissions.get(sessionId);
+  if (!pending) {
+    await createNotification('Error', 'Session not found');
+    return c.json({ success: false, error: 'Session not found' }, 404);
+  }
 
+  // Process in background
+  (async () => {
     let data = pending.data;
     const uploadedUrls: string[] = [];
 
@@ -45,12 +41,7 @@ export const eventsHandler = (c: Context) => {
         if (key !== 'data' && key !== 'schema' && value instanceof File) {
           const url = await uploadFile(value);
           if (!url) {
-            const errorMsg = 'File upload failed';
-            await createNotification('Upload Error', errorMsg);
-            await stream.writeSSE({
-              data: JSON.stringify({ message: errorMsg }),
-              event: 'error',
-            });
+            await createNotification('Upload Error', 'File upload failed');
             pendingSubmissions.delete(sessionId);
             return;
           }
@@ -60,7 +51,7 @@ export const eventsHandler = (c: Context) => {
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 7000));
+    await new Promise(resolve => setTimeout(resolve, 7000));
 
     let submissionId: number;
     try {
@@ -69,17 +60,16 @@ export const eventsHandler = (c: Context) => {
         formSchema: pending.schema,
       });
       submissionId = result[0].insertId;
-      
-      await createNotification('Processing Success', `Form processed and saved successfully with ID: ${submissionId}`);
+
+      await createNotification(
+        'Processing Success',
+        `Form processed and saved successfully with ID: ${submissionId}`,
+      );
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
     } catch (err) {
-      const errorMsg = 'Database insert failed';
-      await createNotification('Processing Failed', errorMsg);
-      await stream.writeSSE({
-        data: JSON.stringify({ message: errorMsg }),
-        event: 'error',
-      });
+      await createNotification('Processing Failed', 'Database insert failed');
       pendingSubmissions.delete(sessionId);
-      
       Promise.all(uploadedUrls.map(url => deleteFile(url)));
       return;
     }
@@ -89,8 +79,8 @@ export const eventsHandler = (c: Context) => {
       try {
         const workflowApi = process.env.WORKFLOW_API || '';
         const fileName = uploadedUrls[0]?.split('/').pop() || 'unknown.csv';
-        
-        await fetch(`${workflowApi}/api/v1/workflows/start`, {
+
+        await fetch(`http://localhost:3000/api/v1/workflows/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -102,18 +92,20 @@ export const eventsHandler = (c: Context) => {
             },
           }),
         });
-        
-        await createNotification('Workflow Initiated', `Workflow process initiated for submission ${submissionId}`);
+
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        await createNotification(
+          'Workflow Initiated',
+          `Workflow process initiated for submission ${submissionId}`,
+        );
       } catch (err) {
         console.error('Workflow start failed:', err);
       }
     }
 
     pendingSubmissions.delete(sessionId);
-    const successMsg = 'Processing completed successfully!';
-    await stream.writeSSE({
-      data: JSON.stringify({ message: successMsg }),
-      event: 'complete',
-    });
-  });
+  })();
+
+  return c.json({ success: true, message: 'Processing started' });
 };

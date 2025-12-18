@@ -190,24 +190,10 @@ export const JsonFormsDemo: FC = () => {
     },
     onSuccess: result => {
       if (result.success) {
-        enqueueSnackbar('Form submitted successfully!', { variant: 'success' });
         clearStoreData();
-
-        // Listen for SSE
-        const eventSource = new EventSource(
-          `${Envs.API_URL}/api/events/${result.sessionId}`,
-        );
-
-        eventSource.addEventListener('complete', event => {
-          const data = JSON.parse(event.data);
-          enqueueSnackbar(data.message, { variant: 'info' });
-          queryClient.invalidateQueries({ queryKey: ['submissions'] });
-          eventSource.close();
-        });
-
-        eventSource.onerror = () => {
-          eventSource.close();
-        };
+        queryClient.invalidateQueries({ queryKey: ['submissions'] });
+        
+        fetch(`${Envs.API_URL}/api/events/${result.sessionId}`);
       } else {
         enqueueSnackbar(`Error: ${result.error}`, { variant: 'error' });
       }

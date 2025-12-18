@@ -70,6 +70,9 @@ export const AuthorizedWorkflows = () => {
   const [tasks, setTasks] = useState<Record<string, Task[]>>({});
   const [loadingRoles, setLoadingRoles] = useState(true);
   const [loadingTasks, setLoadingTasks] = useState<Record<string, boolean>>({});
+  const [loadingActions, setLoadingActions] = useState<Record<string, boolean>>(
+    {},
+  );
   const [error, setError] = useState<string | null>(null);
   const [expandedRole, setExpandedRole] = useState<string | false>(false);
 
@@ -136,6 +139,7 @@ export const AuthorizedWorkflows = () => {
     taskId: string,
     instanceId: string,
   ) => {
+    setLoadingActions(prev => ({ ...prev, [taskId]: true }));
     try {
       const response = await fetch(
         `${Envs.WORKFLOW_URL}/api/v1/tasks/${taskId}/complete`,
@@ -159,6 +163,8 @@ export const AuthorizedWorkflows = () => {
       }
     } catch (err) {
       console.error('Error approving task:', err);
+    } finally {
+      setLoadingActions(prev => ({ ...prev, [taskId]: false }));
     }
   };
 
@@ -168,6 +174,7 @@ export const AuthorizedWorkflows = () => {
     taskId: string,
     instanceId: string,
   ) => {
+    setLoadingActions(prev => ({ ...prev, [taskId]: true }));
     try {
       const response = await fetch(
         `${Envs.WORKFLOW_URL}/api/v1/tasks/${taskId}/complete`,
@@ -191,6 +198,8 @@ export const AuthorizedWorkflows = () => {
       }
     } catch (err) {
       console.error('Error rejecting task:', err);
+    } finally {
+      setLoadingActions(prev => ({ ...prev, [taskId]: false }));
     }
   };
 
@@ -351,6 +360,7 @@ export const AuthorizedWorkflows = () => {
                               variant="contained"
                               color="success"
                               startIcon={<CheckCircleIcon />}
+                              disabled={loadingActions[task.id]}
                               onClick={() =>
                                 handleApprove(
                                   role.key,
@@ -359,13 +369,16 @@ export const AuthorizedWorkflows = () => {
                                   task.instanceId,
                                 )
                               }>
-                              Approve
+                              {loadingActions[task.id]
+                                ? 'Approving...'
+                                : 'Approve'}
                             </Button>
                             <Button
                               size="small"
                               variant="contained"
                               color="error"
                               startIcon={<CancelIcon />}
+                              disabled={loadingActions[task.id]}
                               onClick={() =>
                                 handleReject(
                                   role.key,
@@ -374,7 +387,9 @@ export const AuthorizedWorkflows = () => {
                                   task.instanceId,
                                 )
                               }>
-                              Reject
+                              {loadingActions[task.id]
+                                ? 'Rejecting...'
+                                : 'Reject'}
                             </Button>
                           </Stack>
                         </Paper>

@@ -3,6 +3,56 @@
   "elements": [
     {
       "type": "Control",
+      "scope": "#/properties/title"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/description",
+      "options": {
+        "multi": true
+      }
+    },
+    {
+      "type": "HorizontalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/date"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/dueDate"
+        }
+      ]
+    },
+    {
+      "type": "HorizontalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/email"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/phone"
+        }
+      ]
+    },
+    {
+      "type": "HorizontalLayout",
+      "elements": [
+        {
+          "type": "Control",
+          "scope": "#/properties/priority"
+        },
+        {
+          "type": "Control",
+          "scope": "#/properties/status"
+        }
+      ]
+    },
+    {
+      "type": "Control",
       "scope": "#/properties/requiresApproval"
     },
     {

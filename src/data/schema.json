@@ -1,6 +1,48 @@
 {
   "type": "object",
   "properties": {
+    "title": {
+      "type": "string",
+      "title": "Title",
+      "minLength": 3,
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "Date"
+    },
+    "dueDate": {
+      "type": "string",
+      "format": "date",
+      "title": "Due Date"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "title": "Email Address"
+    },
+    "phone": {
+      "type": "string",
+      "title": "Phone Number",
+      "pattern": "^[0-9\\-\\+\\(\\)\\s]+$"
+    },
+    "priority": {
+      "type": "string",
+      "title": "Priority",
+      "enum": ["Low", "Medium", "High", "Critical"],
+      "default": "Medium"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": ["Draft", "Pending", "In Progress", "Completed"],
+      "default": "Draft"
+    },
     "requiresApproval": {
       "type": "boolean",
       "title": "Requires Approval Workflow",
@@ -22,9 +64,10 @@
       }
     }
   },
-  "required": ["filePicker"],
+  "required": ["title", "filePicker"],
   "errorMessage": {
     "required": {
+      "title": "Title is required",
       "filePicker": "File upload is required"
     }
   }

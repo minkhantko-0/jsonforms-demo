@@ -138,10 +138,6 @@ export const JsonFormsDemo: FC = () => {
 
         // Verify after setting
         console.log('✅ Schema updated in store (editor unchanged)');
-
-        enqueueSnackbar(`Loaded ${workflows.length} workflows from API`, {
-          variant: 'success',
-        });
       } catch (error) {
         console.error('❌ Failed to fetch workflow options:', error);
         enqueueSnackbar('Failed to load workflow options. Using defaults.', {

@@ -62,13 +62,15 @@ export const eventsHandler = (c: Context) => {
 
     await new Promise((resolve) => setTimeout(resolve, 7000));
 
+    let submissionId: number;
     try {
       const result = await db.insert(submissions).values({
         data,
         formSchema: pending.schema,
       });
+      submissionId = result[0].insertId;
       
-      await createNotification('Processing Success', `Form processed and saved successfully with ID: ${result[0].insertId}`);
+      await createNotification('Processing Success', `Form processed and saved successfully with ID: ${submissionId}`);
     } catch (err) {
       const errorMsg = 'Database insert failed';
       await createNotification('Processing Failed', errorMsg);
@@ -78,9 +80,33 @@ export const eventsHandler = (c: Context) => {
       });
       pendingSubmissions.delete(sessionId);
       
-      // Delete uploaded files in background
       Promise.all(uploadedUrls.map(url => deleteFile(url)));
       return;
+    }
+
+    // Start workflow if workflowId exists
+    if (data.workflowId) {
+      try {
+        const workflowApi = process.env.WORKFLOW_API || '';
+        const fileName = uploadedUrls[0]?.split('/').pop() || 'unknown.csv';
+        
+        await fetch(`${workflowApi}/api/v1/workflows/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            workflowId: data.workflowId,
+            refId: submissionId.toString(),
+            context: {
+              fileName,
+              path: uploadedUrls[0] || '',
+            },
+          }),
+        });
+        
+        await createNotification('Workflow Initiated', `Workflow process initiated for submission ${submissionId}`);
+      } catch (err) {
+        console.error('Workflow start failed:', err);
+      }
     }
 
     pendingSubmissions.delete(sessionId);

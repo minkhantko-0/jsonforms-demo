@@ -37,6 +37,13 @@ export const submitHandler = async (c: Context) => {
       formData = await c.req.formData();
       schema = JSON.parse(formData.get('schema') as string);
       data = JSON.parse(formData.get('data') as string);
+      
+      // Add file field placeholders for validation
+      for (const [key, value] of formData.entries()) {
+        if (key !== 'data' && key !== 'schema' && value instanceof File) {
+          data[key] = value.name;
+        }
+      }
     } else {
       const body = await c.req.json();
       data = body.data;

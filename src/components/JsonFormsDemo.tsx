@@ -256,9 +256,12 @@ export const JsonFormsDemo: FC = () => {
   };
 
   const handleSubmit = () => {
-    // Remove File objects for validation
+    // Replace File objects with placeholder strings that match schema patterns
     const dataForValidation = Object.fromEntries(
-      Object.entries(data).filter(([_, v]) => !(v instanceof File)),
+      Object.entries(data).map(([key, value]) => [
+        key,
+        value instanceof File ? value.name : value,
+      ]),
     );
 
     const validate = ajv.compile(schema);

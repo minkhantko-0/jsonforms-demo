@@ -25,7 +25,7 @@ const createNotification = async (title: string, message: string) => {
 export const eventsHandler = (c: Context) => {
   const sessionId = c.req.param('sessionId');
 
-  return streamSSE(c, async (stream) => {
+  return streamSSE(c, async stream => {
     const pending = pendingSubmissions.get(sessionId);
     if (!pending) {
       const errorMsg = 'Session not found';
@@ -60,7 +60,7 @@ export const eventsHandler = (c: Context) => {
       }
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 7000));
+    await new Promise(resolve => setTimeout(resolve, 7000));
 
     let submissionId: number;
     try {
@@ -69,8 +69,11 @@ export const eventsHandler = (c: Context) => {
         formSchema: pending.schema,
       });
       submissionId = result[0].insertId;
-      
-      await createNotification('Processing Success', `Form processed and saved successfully with ID: ${submissionId}`);
+
+      await createNotification(
+        'Processing Success',
+        `Form processed and saved successfully with ID: ${submissionId}`,
+      );
     } catch (err) {
       const errorMsg = 'Database insert failed';
       await createNotification('Processing Failed', errorMsg);
@@ -79,7 +82,7 @@ export const eventsHandler = (c: Context) => {
         event: 'error',
       });
       pendingSubmissions.delete(sessionId);
-      
+
       Promise.all(uploadedUrls.map(url => deleteFile(url)));
       return;
     }
@@ -89,8 +92,9 @@ export const eventsHandler = (c: Context) => {
       try {
         const workflowApi = process.env.WORKFLOW_API || '';
         const fileName = uploadedUrls[0]?.split('/').pop() || 'unknown.csv';
-        
-        await fetch(`${workflowApi}/api/v1/workflows/start`, {
+        console.log('Starting workflow with ID:', data.workflowId);
+        console.log(workflowApi);
+        await fetch(`http://localhost:3000/api/v1/workflows/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -102,8 +106,11 @@ export const eventsHandler = (c: Context) => {
             },
           }),
         });
-        
-        await createNotification('Workflow Initiated', `Workflow process initiated for submission ${submissionId}`);
+
+        await createNotification(
+          'Workflow Initiated',
+          `Workflow process initiated for submission ${submissionId}`,
+        );
       } catch (err) {
         console.error('Workflow start failed:', err);
       }

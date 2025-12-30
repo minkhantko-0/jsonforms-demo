@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import './App.css';
 import { Header } from './components/Header';
 import { JsonFormsDemo } from './components/JsonFormsDemo';
@@ -11,10 +12,11 @@ import { useNotificationStream } from './hooks/useNotificationStream';
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import { Envs } from './utils/envs';
+import { WorkFlowBuilder } from './components/WorkFlowBuilder';
 
 const App = () => {
   const [page, setPage] = useState<
-    'form' | 'view' | 'notifications' | 'workflows'
+    'form' | 'view' | 'notifications' | 'workflows' | 'builder'
   >('form');
   const { isConnected } = useNotificationStream();
 
@@ -69,11 +71,17 @@ const App = () => {
           onClick={() => setPage('workflows')}>
           Workflow Management
         </Button>
+        <Button
+          variant={page === 'builder' ? 'contained' : 'outlined'}
+          onClick={() => setPage('builder')}>
+          Workflow Builder
+        </Button>
       </Box>
       {page === 'form' && <JsonFormsDemo />}
       {page === 'view' && <ViewSubmissions />}
       {page === 'notifications' && <Notifications />}
       {page === 'workflows' && <AuthorizedWorkflows />}
+      {page === 'builder' && <WorkFlowBuilder />}
     </div>
   );
 };

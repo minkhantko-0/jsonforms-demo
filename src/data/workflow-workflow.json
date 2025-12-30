@@ -1,0 +1,91 @@
+{
+  "roles": [
+    {
+      "id": "manager",
+      "key": "manager",
+      "name": "Manager"
+    },
+    {
+      "id": "senior_manager",
+      "key": "senior_manager",
+      "name": "Senior Manager"
+    },
+    {
+      "id": "ceo",
+      "key": "ceo",
+      "name": "CEO"
+    }
+  ],
+  "users": [
+    {
+      "key": "user1",
+      "name": "User 1",
+      "roles": [
+        "manager"
+      ]
+    },
+    {
+      "key": "user2",
+      "name": "User 2",
+      "roles": [
+        "senior_manager"
+      ]
+    }
+  ],
+  "workflows": [
+    {
+      "key": "workflow",
+      "name": "test",
+      "nodes": [
+        {
+          "key": "start",
+          "type": "start"
+        },
+        {
+          "key": "task_node-2",
+          "type": "task",
+          "config": {
+            "type": "assignment",
+            "payload": {
+              "type": "role",
+              "roles": [
+                "manager",
+                "senior_manager"
+              ]
+            }
+          }
+        },
+        {
+          "key": "service_node-3",
+          "type": "service"
+        },
+        {
+          "key": "decision_node-4",
+          "type": "decision"
+        },
+        {
+          "key": "end",
+          "type": "end"
+        }
+      ],
+      "transitions": [
+        {
+          "fromNode": "start",
+          "toNode": "task_node-2"
+        },
+        {
+          "fromNode": "task_node-2",
+          "toNode": "service_node-3"
+        },
+        {
+          "fromNode": "service_node-3",
+          "toNode": "decision_node-4"
+        },
+        {
+          "fromNode": "decision_node-4",
+          "toNode": "end"
+        }
+      ]
+    }
+  ]
+}

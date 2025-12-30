@@ -1,7 +1,6 @@
 import { createTheme, CssBaseline, ThemeProvider } from '@mui/material';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import { StrictMode } from 'react';
 import { SnackbarProvider } from 'notistack';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -28,7 +27,9 @@ if (!rootEl) throw new Error('Failed to find the root element');
 
 createRoot(rootEl).render(
   <QueryClientProvider client={queryClient}>
-    <SnackbarProvider maxSnack={3} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
+    <SnackbarProvider
+      maxSnack={3}
+      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <App />

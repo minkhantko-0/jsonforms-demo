@@ -6,6 +6,7 @@
     "@jsonforms/core": "3.7.0",
     "@jsonforms/material-renderers": "3.7.0",
     "@jsonforms/react": "3.7.0",
+    "@monaco-editor/react": "^4.7.0",
     "@mui/icons-material": "^7.3.5",
     "@mui/lab": "^7.0.1-beta.19",
     "@mui/material": "^7.3.5",

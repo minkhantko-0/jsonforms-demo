@@ -15,6 +15,19 @@ import {
 import { notificationStreamHandler } from './routes/notificationStream';
 import { getWorkflowsHandler } from './routes/workflows';
 import { processCsvHandler } from './routes/processCsv';
+import {
+  getSlaTimerDefinitionsHandler,
+  createSlaTimerDefinitionsHandler,
+  getAllSlaTimerDefinitionsHandler,
+  getSlaTimerDefinitionByIdHandler,
+} from './routes/slaTimerDefinitions';
+import {
+  getWorkflowDefinitionsHandler,
+  getWorkflowDefinitionByIdHandler,
+  createWorkflowDefinitionHandler,
+  updateWorkflowDefinitionHandler,
+  deleteWorkflowDefinitionHandler,
+} from './routes/workflowDefinitions';
 
 const app = new Hono();
 
@@ -31,6 +44,19 @@ app.delete('/api/notifications/:id', deleteNotificationHandler);
 app.get('/api/notifications/stream', notificationStreamHandler);
 app.get('/api/workflows', getWorkflowsHandler);
 app.post('/api/process-csv', processCsvHandler);
+
+// SLA/Timer Definition routes
+app.get('/api/sla-timer-definitions', getSlaTimerDefinitionsHandler);
+app.get('/api/sla-timer-definitions/all', getAllSlaTimerDefinitionsHandler);
+app.get('/api/sla-timer-definitions/:id', getSlaTimerDefinitionByIdHandler);
+app.post('/api/sla-timer-definitions', createSlaTimerDefinitionsHandler);
+
+// Workflow Definition routes
+app.get('/api/workflow-definitions', getWorkflowDefinitionsHandler);
+app.get('/api/workflow-definitions/:id', getWorkflowDefinitionByIdHandler);
+app.post('/api/workflow-definitions', createWorkflowDefinitionHandler);
+app.put('/api/workflow-definitions/:id', updateWorkflowDefinitionHandler);
+app.delete('/api/workflow-definitions/:id', deleteWorkflowDefinitionHandler);
 
 serve({ fetch: app.fetch, port: 3001 });
 console.log('Server running on http://localhost:3001');

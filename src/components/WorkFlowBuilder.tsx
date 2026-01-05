@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import {
   ReactFlow,
   Background,
@@ -25,6 +25,9 @@ import {
   DialogContent,
   TextField,
   Tooltip,
+  IconButton,
+  ToggleButtonGroup,
+  ToggleButton,
 } from '@mui/material';
 import {
   CheckCircle,
@@ -32,6 +35,9 @@ import {
   Settings,
   Stop,
   Download,
+  ViewSidebar,
+  ViewAgenda,
+  ContentCopy,
 } from '@mui/icons-material';
 import { CustomNode } from './workflow/CustomNode';
 import { NodeConfigDialog } from './workflow/NodeConfigDialog';
@@ -78,6 +84,7 @@ export function WorkFlowBuilder() {
   const [workflowKey, setWorkflowKey] = useState('');
   const [editingNode, setEditingNode] = useState<string | null>(null);
   const [editingEdge, setEditingEdge] = useState<string | null>(null);
+  const [viewLayout, setViewLayout] = useState<'side' | 'bottom'>('side');
   const nodeIdCounter = useRef(2);
 
   const onConnect = useCallback(
@@ -189,6 +196,17 @@ export function WorkFlowBuilder() {
       return;
     }
 
+    const json = generateWorkflowJSON();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `workflow-${workflowKey}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [workflowName, workflowKey, nodes, edges]);
+
+  const generateWorkflowJSON = useCallback(() => {
     const workflowNodes: WorkflowNode[] = nodes.map(node => {
       const baseNode: WorkflowNode = {
         key: node.data.nodeKey,
@@ -234,23 +252,21 @@ export function WorkFlowBuilder() {
       ],
       workflows: [
         {
-          key: workflowKey,
-          name: workflowName,
+          key: workflowKey || 'workflow',
+          name: workflowName || 'Untitled Workflow',
           nodes: workflowNodes,
           transitions: workflowTransitions,
         },
       ],
     };
 
-    const json = JSON.stringify(workflowDefinition, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `workflow-${workflowKey}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    return JSON.stringify(workflowDefinition, null, 2);
   }, [nodes, edges, workflowName, workflowKey]);
+
+  const workflowJSON = useMemo(
+    () => generateWorkflowJSON(),
+    [generateWorkflowJSON],
+  );
 
   const handleExportClick = useCallback(() => {
     if (!workflowName || !workflowKey) {
@@ -264,6 +280,10 @@ export function WorkFlowBuilder() {
     setWorkflowNameDialogOpen(false);
     exportWorkflow();
   }, [exportWorkflow]);
+
+  const copyToClipboard = useCallback(() => {
+    navigator.clipboard.writeText(workflowJSON);
+  }, [workflowJSON]);
 
   const editingNodeData = editingNode
     ? nodes.find(n => n.id === editingNode)?.data
@@ -283,7 +303,7 @@ export function WorkFlowBuilder() {
             alignItems: 'center',
           }}>
           <Typography variant="h5">Workflow Builder</Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <TextField
               size="small"
               placeholder="Workflow Name"
@@ -298,6 +318,22 @@ export function WorkFlowBuilder() {
               onChange={e => setWorkflowKey(e.target.value)}
               sx={{ width: 200 }}
             />
+            <ToggleButtonGroup
+              value={viewLayout}
+              exclusive
+              onChange={(_, newLayout) => newLayout && setViewLayout(newLayout)}
+              size="small">
+              <ToggleButton value="side">
+                <Tooltip title="Side by side">
+                  <ViewSidebar />
+                </Tooltip>
+              </ToggleButton>
+              <ToggleButton value="bottom">
+                <Tooltip title="Stack vertically">
+                  <ViewAgenda />
+                </Tooltip>
+              </ToggleButton>
+            </ToggleButtonGroup>
             <Button
               variant="contained"
               startIcon={<Download />}
@@ -308,56 +344,116 @@ export function WorkFlowBuilder() {
         </Box>
       </Paper>
 
-      <Box sx={{ flexGrow: 1, position: 'relative' }}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          fitView>
-          <Background />
-          <Controls />
-          <MiniMap />
+      <Box
+        sx={{
+          flexGrow: 1,
+          display: 'flex',
+          flexDirection: viewLayout === 'side' ? 'row' : 'column',
+          overflow: 'hidden',
+        }}>
+        <Box
+          sx={{
+            flex: viewLayout === 'side' ? '1 1 60%' : '1 1 50%',
+            position: 'relative',
+            minHeight: 0,
+          }}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            fitView>
+            <Background />
+            <Controls />
+            <MiniMap />
 
-          <Panel position="top-left">
-            <Paper sx={{ p: 1 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Add Node
-              </Typography>
-              <ButtonGroup orientation="vertical" size="small" fullWidth>
-                <Tooltip title="Add Task Node" placement="right">
-                  <Button
-                    startIcon={<CheckCircle />}
-                    onClick={() => addNode('task')}>
-                    Task
-                  </Button>
-                </Tooltip>
-                <Tooltip title="Add Decision Node" placement="right">
-                  <Button
-                    startIcon={<Error />}
-                    onClick={() => addNode('decision')}>
-                    Decision
-                  </Button>
-                </Tooltip>
-                <Tooltip title="Add Service Node" placement="right">
-                  <Button
-                    startIcon={<Settings />}
-                    onClick={() => addNode('service')}>
-                    Service
-                  </Button>
-                </Tooltip>
-                <Tooltip title="Add End Node" placement="right">
-                  <Button startIcon={<Stop />} onClick={() => addNode('end')}>
-                    End
-                  </Button>
-                </Tooltip>
-              </ButtonGroup>
-            </Paper>
-          </Panel>
-        </ReactFlow>
+            <Panel position="top-left">
+              <Paper sx={{ p: 1 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Add Node
+                </Typography>
+                <ButtonGroup orientation="vertical" size="small" fullWidth>
+                  <Tooltip title="Add Task Node" placement="right">
+                    <Button
+                      startIcon={<CheckCircle />}
+                      onClick={() => addNode('task')}>
+                      Task
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title="Add Decision Node" placement="right">
+                    <Button
+                      startIcon={<Error />}
+                      onClick={() => addNode('decision')}>
+                      Decision
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title="Add Service Node" placement="right">
+                    <Button
+                      startIcon={<Settings />}
+                      onClick={() => addNode('service')}>
+                      Service
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title="Add End Node" placement="right">
+                    <Button startIcon={<Stop />} onClick={() => addNode('end')}>
+                      End
+                    </Button>
+                  </Tooltip>
+                </ButtonGroup>
+              </Paper>
+            </Panel>
+          </ReactFlow>
+        </Box>
+
+        <Box
+          sx={{
+            flex: viewLayout === 'side' ? '1 1 40%' : '1 1 50%',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            borderLeft: viewLayout === 'side' ? '1px solid #ddd' : 'none',
+            borderTop: viewLayout === 'bottom' ? '1px solid #ddd' : 'none',
+          }}>
+          <Paper
+            sx={{
+              p: 2,
+              borderRadius: 0,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+            elevation={1}>
+            <Typography variant="h6">Workflow JSON</Typography>
+            <Tooltip title="Copy to clipboard">
+              <IconButton onClick={copyToClipboard} size="small">
+                <ContentCopy />
+              </IconButton>
+            </Tooltip>
+          </Paper>
+          <Box
+            sx={{
+              flex: 1,
+              overflow: 'auto',
+              bgcolor: '#1e1e1e',
+              color: '#d4d4d4',
+              p: 2,
+              fontFamily: 'monospace',
+              fontSize: '0.875rem',
+              minHeight: 0,
+            }}>
+            <pre
+              style={{
+                margin: 0,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}>
+              {workflowJSON}
+            </pre>
+          </Box>
+        </Box>
       </Box>
 
       <NodeConfigDialog

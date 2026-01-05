@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { FC, useMemo, useState, useEffect } from 'react';
 import { useSnackbar } from 'notistack';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -7,7 +8,6 @@ import Grid from '@mui/material/Grid';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
-import Box from '@mui/material/Box';
 import Alert from '@mui/material/Alert';
 import {
   materialCells,
@@ -21,7 +21,6 @@ import AgeSliderControl from './AgeSliderControl';
 import ageSliderControlTester from '../testers/ageSliderControlTester';
 import FileUploadControl from './FileUploadControl';
 import fileUploadControlTester from '../testers/fileUploadControlTester';
-import defaultSchema from '../data/schema.json';
 import { CSSProperties } from '@mui/material';
 import { useFormStore } from '../store/formStore';
 import { Envs } from '../utils/envs';
@@ -53,8 +52,6 @@ const classes = {
     padding: '1rem',
   },
 };
-
-const initialData = {};
 
 const ajv = createAjv({ allErrors: true });
 ajvErrors(ajv);
@@ -192,7 +189,7 @@ export const JsonFormsDemo: FC = () => {
       if (result.success) {
         clearStoreData();
         queryClient.invalidateQueries({ queryKey: ['submissions'] });
-        
+
         fetch(`${Envs.API_URL}/api/events/${result.sessionId}`);
       } else {
         enqueueSnackbar(`Error: ${result.error}`, { variant: 'error' });
@@ -288,6 +285,8 @@ export const JsonFormsDemo: FC = () => {
     }
   };
 
+  console.log('errors:', errors);
+
   return (
     <Grid container spacing={2} style={classes.container}>
       <Grid size={{ sm: 3 }}>
@@ -348,11 +347,6 @@ export const JsonFormsDemo: FC = () => {
           </Alert>
         )}
         <div style={classes.demoform}>
-          {console.log('🎨 Rendering JsonForms with schema:', schema)}
-          {console.log(
-            '🎨 workflowId in render:',
-            schema?.properties?.workflowId,
-          )}
           <JsonForms
             key={JSON.stringify(schema) + JSON.stringify(uiSchema)}
             schema={schema}

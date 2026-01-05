@@ -13,10 +13,11 @@ import WifiIcon from '@mui/icons-material/Wifi';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import { Envs } from './utils/envs';
 import { WorkFlowBuilder } from './components/WorkFlowBuilder';
+import { SLASetUp } from './components/SLASetUp';
 
 const App = () => {
   const [page, setPage] = useState<
-    'form' | 'view' | 'notifications' | 'workflows' | 'builder'
+    'form' | 'view' | 'notifications' | 'workflows' | 'builder' | 'setup'
   >('form');
   const { isConnected } = useNotificationStream();
 
@@ -76,12 +77,18 @@ const App = () => {
           onClick={() => setPage('builder')}>
           Workflow Builder
         </Button>
+        <Button
+          variant={page === 'setup' ? 'contained' : 'outlined'}
+          onClick={() => setPage('setup')}>
+          Setup
+        </Button>
       </Box>
       {page === 'form' && <JsonFormsDemo />}
       {page === 'view' && <ViewSubmissions />}
       {page === 'notifications' && <Notifications />}
       {page === 'workflows' && <AuthorizedWorkflows />}
       {page === 'builder' && <WorkFlowBuilder />}
+      {page === 'setup' && <SLASetUp />}
     </div>
   );
 };

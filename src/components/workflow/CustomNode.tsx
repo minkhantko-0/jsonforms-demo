@@ -4,11 +4,13 @@ import { Box, Typography, IconButton, Chip } from '@mui/material';
 import {
   PlayArrow,
   CheckCircle,
-  Error,
+  Error as ErrorIcon,
   Settings,
   Stop,
   Edit,
   Delete,
+  CallSplit,
+  CallMerge,
 } from '@mui/icons-material';
 import { NodeData } from '../../types/workflow';
 
@@ -29,6 +31,14 @@ const nodeStyles = {
     background: '#9c27b0',
     color: '#fff',
   },
+  parallel_gateway: {
+    background: '#00bcd4',
+    color: '#fff',
+  },
+  parallel_join: {
+    background: '#009688',
+    color: '#fff',
+  },
   end: {
     background: '#f44336',
     color: '#fff',
@@ -38,8 +48,10 @@ const nodeStyles = {
 const nodeIcons = {
   start: PlayArrow,
   task: CheckCircle,
-  decision: Error,
+  decision: ErrorIcon,
   service: Settings,
+  parallel_gateway: CallSplit,
+  parallel_join: CallMerge,
   end: Stop,
 };
 
@@ -57,9 +69,18 @@ export const CustomNode = memo(({ data, id }: Node<NodeData>) => {
         boxShadow: 2,
         ...style,
       }}>
+      {/* Top handle for sequential flow */}
       {data.nodeType !== 'start' && (
-        <Handle type="target" position={Position.Top} />
+        <Handle type="target" position={Position.Top} id="top" />
       )}
+
+      {/* Left handle for parallel flows */}
+      <Handle type="target" position={Position.Left} id="left" />
+      <Handle type="source" position={Position.Left} id="left-source" />
+
+      {/* Right handle for parallel flows */}
+      <Handle type="target" position={Position.Right} id="right" />
+      <Handle type="source" position={Position.Right} id="right-source" />
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
         <Icon fontSize="small" />
@@ -74,33 +95,41 @@ export const CustomNode = memo(({ data, id }: Node<NodeData>) => {
 
       {data.config && (
         <Box sx={{ mb: 1 }}>
-          {data.config.type === 'assignment' &&
-            data.config.payload.type === 'role' && (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {('roles' in data.config.payload &&
-                Array.isArray(data.config.payload.roles)
-                  ? data.config.payload.roles
-                  : []
-                ).map((role: string) => (
-                  <Chip
-                    key={role}
-                    label={role}
-                    size="small"
-                    sx={{
-                      backgroundColor: 'rgba(255,255,255,0.2)',
-                      color: 'inherit',
-                      fontSize: '0.7rem',
-                    }}
-                  />
-                ))}
-              </Box>
-            )}
-          {data.config.type === 'service' && (
+          {data.config.type === 'assignment' && data.config.roles && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              {data.config.roles.map((role: string) => (
+                <Chip
+                  key={role}
+                  label={role}
+                  size="small"
+                  sx={{
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    color: 'inherit',
+                    fontSize: '0.7rem',
+                  }}
+                />
+              ))}
+            </Box>
+          )}
+          {data.config.type === 'assignment' && data.config.groups && (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+              {data.config.groups.map((group: string) => (
+                <Chip
+                  key={group}
+                  label={group}
+                  size="small"
+                  color="primary"
+                  sx={{
+                    fontSize: '0.7rem',
+                    height: '20px',
+                  }}
+                />
+              ))}
+            </Box>
+          )}
+          {data.config.type === 'service' && data.config.payload && (
             <Typography variant="caption" sx={{ opacity: 0.9 }}>
-              {'method' in data.config.payload
-                ? data.config.payload.method
-                : ''}{' '}
-              Request
+              {data.config.payload.method} Request
             </Typography>
           )}
         </Box>
@@ -127,8 +156,9 @@ export const CustomNode = memo(({ data, id }: Node<NodeData>) => {
           )}
       </Box>
 
+      {/* Bottom handle for sequential flow */}
       {data.nodeType !== 'end' && (
-        <Handle type="source" position={Position.Bottom} />
+        <Handle type="source" position={Position.Bottom} id="bottom" />
       )}
     </Box>
   );

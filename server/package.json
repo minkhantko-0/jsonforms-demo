@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "build": "esbuild --bundle --outfile=./dist/index.js --platform=node --minify --target=node20 ./src/index.ts",
+    "start": "node ./dist/index.js",
     "db:push": "drizzle-kit push:mysql",
     "db:generate": "drizzle-kit generate:mysql",
     "db:migrate": "tsx src/db/migrate.ts"

@@ -122,8 +122,7 @@ export function WorkFlowBuilder() {
         const slaResponse = await fetch(`${API_URL}api/v1/slas`);
         if (slaResponse.ok) {
           const slaData = await slaResponse.json();
-          const slaKeys =
-            slaData.data?.map((sla: any) => `${sla.key} - ${sla.name}`) || [];
+          const slaKeys = slaData.data?.map((sla: any) => sla.key) || [];
           setAvailableSLAs(slaKeys);
         }
 
@@ -132,9 +131,7 @@ export function WorkFlowBuilder() {
         if (timerResponse.ok) {
           const timerData = await timerResponse.json();
           const timerKeys =
-            timerData.data?.map(
-              (timer: any) => `${timer.key} - ${timer.name}`,
-            ) || [];
+            timerData.data?.map((timer: any) => timer.key) || [];
           setAvailableTimers(timerKeys);
         }
       } catch (error) {

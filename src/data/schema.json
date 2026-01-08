@@ -43,6 +43,14 @@
       "enum": ["Draft", "Pending", "In Progress", "Completed"],
       "default": "Draft"
     },
+    "amount": {
+      "type": "number",
+      "title": "Amount",
+      "minimum": 0,
+      "errorMessage": {
+        "minimum": "Amount must be a non-negative number"
+      }
+    },
     "requiresApproval": {
       "type": "boolean",
       "title": "Requires Approval Workflow",
@@ -64,11 +72,12 @@
       }
     }
   },
-  "required": ["title", "filePicker"],
+  "required": ["title", "filePicker", "amount"],
   "errorMessage": {
     "required": {
       "title": "Title is required",
-      "filePicker": "File upload is required"
+      "filePicker": "File upload is required",
+      "amount": "Amount is required"
     }
   }
 }

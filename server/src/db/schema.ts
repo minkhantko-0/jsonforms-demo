@@ -35,3 +35,15 @@ export const workflowDefinitions = mysqlTable('workflow_definitions', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+export const workflowHistory = mysqlTable('workflow_history', {
+  id: int('id').primaryKey().autoincrement(),
+  submissionId: int('submission_id').notNull(),
+  workflowDefinitionId: int('workflow_definition_id'),
+  workflowName: varchar('workflow_name', { length: 255 }).notNull(),
+  currentStage: varchar('current_stage', { length: 255 }).notNull(),
+  status: varchar('status', { length: 50 }).notNull(), // 'active', 'completed', 'failed', 'cancelled'
+  stages: json('stages').notNull(), // Array of WorkflowStage objects
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});

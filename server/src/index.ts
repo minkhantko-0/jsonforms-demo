@@ -36,6 +36,13 @@ import {
   updateWorkflowDefinitionHandler,
   deleteWorkflowDefinitionHandler,
 } from './routes/workflowDefinitions';
+import {
+  getWorkflowHistoryHandler,
+  getWorkflowHistoryBySubmissionHandler,
+  createWorkflowHistoryHandler,
+  updateWorkflowHistoryHandler,
+  getSubmissionsWithWorkflowHandler,
+} from './routes/workflowHistory';
 
 const app = new Hono();
 
@@ -74,6 +81,16 @@ app.get('/api/workflow-definitions/:id', getWorkflowDefinitionByIdHandler);
 app.post('/api/workflow-definitions', createWorkflowDefinitionHandler);
 app.put('/api/workflow-definitions/:id', updateWorkflowDefinitionHandler);
 app.delete('/api/workflow-definitions/:id', deleteWorkflowDefinitionHandler);
+
+// Workflow History routes
+app.get('/api/workflow-history', getWorkflowHistoryHandler);
+app.get(
+  '/api/workflow-history/submission/:submissionId',
+  getWorkflowHistoryBySubmissionHandler,
+);
+app.post('/api/workflow-history', createWorkflowHistoryHandler);
+app.put('/api/workflow-history/:id', updateWorkflowHistoryHandler);
+app.get('/api/submissions-with-workflow', getSubmissionsWithWorkflowHandler);
 
 serve({ fetch: app.fetch, port: 3001 });
 console.log('Server running on http://localhost:3001');

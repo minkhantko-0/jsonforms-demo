@@ -1,3 +1,4 @@
+import './index.css';
 import { createTheme, CssBaseline, ThemeProvider } from '@mui/material';
 import { createRoot } from 'react-dom/client';
 import App from './App';

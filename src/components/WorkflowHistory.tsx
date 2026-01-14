@@ -1,9 +1,18 @@
-import { FC, useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp, FileText, Clock, User } from 'lucide-react';
+import { FC, useState } from 'react';
 import {
-  WorkflowStageVisualizer,
-  WorkflowStage,
-} from './WorkflowStageVisualizer';
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Clock,
+  User,
+  CheckCircle,
+  XCircle,
+  Play,
+  AlertCircle,
+  AlertTriangle,
+} from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Envs } from '../utils/envs';
 import {
   Box,
   Card,
@@ -13,108 +22,145 @@ import {
   Chip,
   Collapse,
   Paper,
+  CircularProgress,
 } from '@mui/material';
 
-interface WorkflowHistory {
-  id: number;
-  submissionId: number;
-  workflowName: string;
-  currentStage: string;
-  status: 'active' | 'completed' | 'failed' | 'cancelled';
-  stages: WorkflowStage[];
+interface WorkflowInstance {
+  id: string;
+  refId: string;
+  createdBy: string;
+  status: string;
+  variables: Record<string, any>;
+  currentNode: string;
   createdAt: string;
   updatedAt: string;
 }
 
-interface Submission {
-  id: number;
-  data: Record<string, unknown>;
+interface ActionHistory {
+  id: string;
+  workflowInstanceId: string;
+  action: string;
+  performedBy: string;
+  details: {
+    node: {
+      key: string;
+      type: string;
+      config?: any;
+      description?: string;
+    };
+    outputs?: any;
+    branchKey?: string;
+  };
+  completedAt: string;
   createdAt: string;
-  workflowHistory?: WorkflowHistory;
+}
+
+interface WorkflowDetails {
+  id: string;
+  workflowId: string;
+  status: string;
+  variables: Record<string, any>;
+  currentNode: string;
+  actionHistories: ActionHistory[];
+  defSnapshot: {
+    key: string;
+    name: string;
+    nodes: any[];
+    transitions: any[];
+  };
+  parallelBranches?: any[];
 }
 
 export const WorkflowHistory: FC = () => {
-  const [expandedSubmissions, setExpandedSubmissions] = useState<Set<number>>(
+  const [expandedInstances, setExpandedInstances] = useState<Set<string>>(
     new Set(),
   );
+  const [instanceDetails, setInstanceDetails] = useState<
+    Record<string, WorkflowDetails>
+  >({});
+  const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
 
-  // Generate static mock submissions for UI demonstration
-  const submissions = useMemo(() => {
-    const mockSubmissions: Submission[] = [
-      {
-        id: 1,
-        data: {
-          name: 'John Doe',
-          email: 'john.doe@example.com',
-          department: 'Operations',
-          requestType: 'Budget Approval',
-          amount: 15000,
-        },
-        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 2,
-        data: {
-          name: 'Jane Smith',
-          email: 'jane.smith@example.com',
-          department: 'Security',
-          requestType: 'Access Request',
-          priority: 'High',
-        },
-        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 3,
-        data: {
-          name: 'Bob Johnson',
-          email: 'bob.johnson@example.com',
-          department: 'IT',
-          requestType: 'Resource Allocation',
-          resources: ['Laptop', 'Monitor', 'Software License'],
-        },
-        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 4,
-        data: {
-          name: 'Alice Brown',
-          email: 'alice.brown@example.com',
-          department: 'HR',
-          requestType: 'Policy Change',
-          description: 'Update remote work policy',
-        },
-        createdAt: new Date(
-          Date.now() - 10 * 24 * 60 * 60 * 1000,
-        ).toISOString(),
-      },
-      {
-        id: 5,
-        data: {
-          name: 'Charlie Wilson',
-          email: 'charlie.wilson@example.com',
-          department: 'Marketing',
-          requestType: 'Campaign Approval',
-          budget: 25000,
-        },
-        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-    ];
+  // Fetch workflow instances
+  const { data: instances = [], isLoading } = useQuery({
+    queryKey: ['workflowInstances'],
+    queryFn: async () => {
+      const response = await fetch(
+        `${Envs.WORKFLOW_URL}/api/v1/workflows/instances`,
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      return result.data || [];
+    },
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
 
-    return mockSubmissions.map(submission => ({
-      ...submission,
-      workflowHistory: generateMockWorkflowHistory(submission),
-    }));
-  }, []);
-
-  const toggleExpanded = (id: number) => {
-    const newExpanded = new Set(expandedSubmissions);
+  const toggleExpanded = async (id: string) => {
+    const newExpanded = new Set(expandedInstances);
     if (newExpanded.has(id)) {
       newExpanded.delete(id);
     } else {
       newExpanded.add(id);
+
+      // Fetch details if not already loaded
+      if (!instanceDetails[id]) {
+        setLoadingDetails(prev => new Set(prev).add(id));
+        try {
+          const response = await fetch(
+            `${Envs.WORKFLOW_URL}/api/v1/workflows/instances/${id}`,
+          );
+          if (response.ok) {
+            const result = await response.json();
+            setInstanceDetails(prev => ({
+              ...prev,
+              [id]: result.data,
+            }));
+          }
+        } catch (error) {
+          console.error('Error fetching workflow details:', error);
+        } finally {
+          setLoadingDetails(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(id);
+            return newSet;
+          });
+        }
+      }
     }
-    setExpandedSubmissions(newExpanded);
+    setExpandedInstances(newExpanded);
   };
+
+  const getStatusColor = (
+    status: string,
+  ): 'success' | 'primary' | 'error' | 'warning' | 'default' => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'success';
+      case 'running':
+        return 'primary';
+      case 'failed':
+        return 'error';
+      case 'cancelled':
+        return 'warning';
+      default:
+        return 'default';
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: 400,
+        }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -129,17 +175,18 @@ export const WorkflowHistory: FC = () => {
           Workflow History
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Total Submissions: {submissions.length}
+          Total Instances: {instances.length}
         </Typography>
       </Box>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {submissions.map((submission: Submission) => {
-          const isExpanded = expandedSubmissions.has(submission.id);
-          const history = submission.workflowHistory;
+        {instances.map((instance: WorkflowInstance) => {
+          const isExpanded = expandedInstances.has(instance.id);
+          const details = instanceDetails[instance.id];
+          const isLoadingDetail = loadingDetails.has(instance.id);
 
           return (
-            <Card key={submission.id} elevation={2}>
+            <Card key={instance.id} elevation={2}>
               <CardContent
                 sx={{
                   display: 'flex',
@@ -148,7 +195,7 @@ export const WorkflowHistory: FC = () => {
                   cursor: 'pointer',
                   '&:hover': { bgcolor: 'action.hover' },
                 }}
-                onClick={() => toggleExpanded(submission.id)}>
+                onClick={() => toggleExpanded(instance.id)}>
                 <Box
                   sx={{
                     display: 'flex',
@@ -173,23 +220,13 @@ export const WorkflowHistory: FC = () => {
                     <Box
                       sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Typography variant="h6">
-                        Submission #{submission.id}
+                        Ref ID: {instance.refId}
                       </Typography>
-                      {history && (
-                        <Chip
-                          label={history.status.toUpperCase()}
-                          color={
-                            history.status === 'completed'
-                              ? 'success'
-                              : history.status === 'active'
-                                ? 'primary'
-                                : history.status === 'failed'
-                                  ? 'error'
-                                  : 'default'
-                          }
-                          size="small"
-                        />
-                      )}
+                      <Chip
+                        label={instance.status.toUpperCase()}
+                        color={getStatusColor(instance.status)}
+                        size="small"
+                      />
                     </Box>
 
                     <Box
@@ -207,22 +244,29 @@ export const WorkflowHistory: FC = () => {
                         }}>
                         <Clock size={14} />
                         <Typography variant="body2" color="text.secondary">
-                          {new Date(submission.createdAt).toLocaleString()}
+                          {new Date(instance.createdAt).toLocaleString()}
                         </Typography>
                       </Box>
-                      {history && (
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.5,
-                          }}>
-                          <User size={14} />
-                          <Typography variant="body2" color="text.secondary">
-                            Workflow: {history.workflowName}
-                          </Typography>
-                        </Box>
-                      )}
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.5,
+                        }}>
+                        <User size={14} />
+                        <Typography variant="body2" color="text.secondary">
+                          {instance.createdBy}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ mt: 0.5 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Workflow: {instance.variables?.workflowId || 'N/A'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Current Node: {instance.currentNode}
+                      </Typography>
                     </Box>
                   </Box>
                 </Box>
@@ -236,7 +280,7 @@ export const WorkflowHistory: FC = () => {
                 </IconButton>
               </CardContent>
 
-              {isExpanded && history && (
+              {isExpanded && (
                 <Collapse in={isExpanded}>
                   <Box
                     sx={{
@@ -245,43 +289,492 @@ export const WorkflowHistory: FC = () => {
                       borderTop: 1,
                       borderColor: 'divider',
                     }}>
-                    <Typography
-                      variant="subtitle2"
-                      color="text.secondary"
-                      gutterBottom>
-                      Current Stage: {history.currentStage}
-                    </Typography>
+                    {isLoadingDetail ? (
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'center',
+                          py: 4,
+                        }}>
+                        <CircularProgress size={32} />
+                      </Box>
+                    ) : details && details.defSnapshot ? (
+                      <>
+                        <style>
+                          {`
+                            @keyframes pulse {
+                              0%, 100% {
+                                opacity: 1;
+                                transform: scale(1);
+                              }
+                              50% {
+                                opacity: 0.7;
+                                transform: scale(1.05);
+                              }
+                            }
+                          `}
+                        </style>
 
-                    <WorkflowStageVisualizer
-                      stages={history.stages}
-                      currentStageKey={history.currentStage}
-                    />
+                        <Box>
+                          <Typography variant="h6" gutterBottom>
+                            Workflow Stages
+                          </Typography>
+                          <Paper variant="outlined" sx={{ p: 2 }}>
+                            {(() => {
+                              // Find start and end nodes from defSnapshot
+                              const startNode = details.defSnapshot.nodes?.find(
+                                (n: any) => n.type === 'start',
+                              );
+                              const endNode = details.defSnapshot.nodes?.find(
+                                (n: any) => n.type === 'end',
+                              );
 
-                    <Box
-                      sx={{
-                        mt: 4,
-                        pt: 4,
-                        borderTop: 1,
-                        borderColor: 'divider',
-                      }}>
-                      <Typography
-                        variant="subtitle2"
-                        color="text.secondary"
-                        gutterBottom>
-                        Submission Data
-                      </Typography>
-                      <Paper variant="outlined" sx={{ p: 2, mt: 1 }}>
-                        <pre
-                          style={{
-                            fontSize: 12,
-                            overflow: 'auto',
-                            maxHeight: 250,
-                            margin: 0,
-                          }}>
-                          {JSON.stringify(submission.data, null, 2)}
-                        </pre>
-                      </Paper>
-                    </Box>
+                              // Find start and end action data from actionHistories
+                              const startActionData =
+                                details.actionHistories?.find(
+                                  (action: ActionHistory) =>
+                                    action.details?.node?.type === 'start',
+                                );
+                              const endActionData =
+                                details.actionHistories?.find(
+                                  (action: ActionHistory) =>
+                                    action.details?.node?.type === 'end',
+                                );
+
+                              // Filter out start and end nodes from actionHistories
+                              const actionHistories = (
+                                details.actionHistories || []
+                              ).filter((action: ActionHistory) => {
+                                const nodeType = action.details?.node?.type;
+                                return (
+                                  nodeType !== 'start' && nodeType !== 'end'
+                                );
+                              });
+
+                              return (
+                                <>
+                                  {/* Start Node - Always at top */}
+                                  {startNode && (
+                                    <Box
+                                      sx={{
+                                        display: 'flex',
+                                        mb: 3,
+                                      }}>
+                                      {/* Timeline Center - Icon and Line */}
+                                      <Box
+                                        sx={{
+                                          display: 'flex',
+                                          flexDirection: 'column',
+                                          alignItems: 'center',
+                                          mr: 2,
+                                        }}>
+                                        <Box
+                                          sx={{
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: '50%',
+                                            bgcolor: '#4caf5020',
+                                            border: '2px solid #4caf50',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                          }}>
+                                          <Play size={20} color="#4caf50" />
+                                        </Box>
+                                        <Box
+                                          sx={{
+                                            width: 2,
+                                            flexGrow: 1,
+                                            bgcolor: '#4caf50',
+                                            mt: 1,
+                                            minHeight: 40,
+                                          }}
+                                        />
+                                      </Box>
+
+                                      {/* Timeline Right - Content */}
+                                      <Box sx={{ flex: 1, pb: 2 }}>
+                                        <Box
+                                          sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                            mb: 0.5,
+                                          }}>
+                                          <Typography
+                                            variant="subtitle2"
+                                            component="span"
+                                            fontWeight="bold">
+                                            {startNode.config?.payload?.name ||
+                                              'Start'}
+                                          </Typography>
+                                          <Chip
+                                            label="Completed"
+                                            color="success"
+                                            size="small"
+                                          />
+                                        </Box>
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary">
+                                          Type: start
+                                        </Typography>
+                                        {startActionData && (
+                                          <Typography
+                                            variant="caption"
+                                            color="text.secondary"
+                                            display="block"
+                                            sx={{ mt: 0.5 }}>
+                                            Performed by:{' '}
+                                            {startActionData.performedBy} •{' '}
+                                            {new Date(
+                                              startActionData.completedAt,
+                                            ).toLocaleString()}
+                                          </Typography>
+                                        )}
+                                      </Box>
+                                    </Box>
+                                  )}
+
+                                  {/* Action History Stages */}
+                                  {actionHistories.map(
+                                    (action: ActionHistory, index: number) => {
+                                      const nodeType =
+                                        action.details?.node?.type || 'unknown';
+                                      const isCurrentNode =
+                                        details.currentNode ===
+                                        action.details?.node?.key;
+                                      const isSlaBreach =
+                                        action.completedAt === null;
+
+                                      let IconComponent = AlertCircle;
+                                      let iconColor = '#2196f3';
+
+                                      if (isSlaBreach) {
+                                        // SLA Breach - node was skipped
+                                        IconComponent = AlertTriangle;
+                                        iconColor = '#ff9800';
+                                      } else if (nodeType === 'task') {
+                                        const outputs = action.details?.outputs;
+                                        if (outputs?.isApproved === true) {
+                                          IconComponent = CheckCircle;
+                                          iconColor = '#4caf50';
+                                        } else if (
+                                          outputs?.isApproved === false
+                                        ) {
+                                          IconComponent = XCircle;
+                                          iconColor = '#f44336';
+                                        } else {
+                                          IconComponent = AlertCircle;
+                                          iconColor = '#2196f3';
+                                        }
+                                      } else if (nodeType === 'service') {
+                                        IconComponent = CheckCircle;
+                                        iconColor = '#4caf50';
+                                      }
+
+                                      return (
+                                        <Box
+                                          key={action.id}
+                                          sx={{
+                                            display: 'flex',
+                                            mb: 3,
+                                          }}>
+                                          {/* Timeline Center - Icon and Line */}
+                                          <Box
+                                            sx={{
+                                              display: 'flex',
+                                              flexDirection: 'column',
+                                              alignItems: 'center',
+                                              mr: 2,
+                                            }}>
+                                            <Box
+                                              sx={{
+                                                width: 40,
+                                                height: 40,
+                                                borderRadius: '50%',
+                                                bgcolor: iconColor + '20',
+                                                border: `2px solid ${iconColor}`,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                animation:
+                                                  isCurrentNode &&
+                                                  instance.status === 'running'
+                                                    ? 'pulse 2s ease-in-out infinite'
+                                                    : 'none',
+                                              }}>
+                                              <IconComponent
+                                                size={20}
+                                                color={iconColor}
+                                              />
+                                            </Box>
+                                            <Box
+                                              sx={{
+                                                width: 2,
+                                                flexGrow: 1,
+                                                bgcolor: iconColor,
+                                                mt: 1,
+                                                minHeight: 40,
+                                              }}
+                                            />
+                                          </Box>
+
+                                          {/* Timeline Right - Content */}
+                                          <Box sx={{ flex: 1, pb: 2 }}>
+                                            <Box
+                                              sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 1,
+                                                mb: 0.5,
+                                              }}>
+                                              <Typography
+                                                variant="subtitle2"
+                                                component="span"
+                                                fontWeight="bold">
+                                                {action.details?.node?.config
+                                                  ?.payload?.name ||
+                                                  action.action
+                                                    .replace(/_/g, ' ')
+                                                    .replace(
+                                                      /\b\w/g,
+                                                      (l: string) =>
+                                                        l.toUpperCase(),
+                                                    )}
+                                              </Typography>
+                                              {isCurrentNode && (
+                                                <Chip
+                                                  label="Current"
+                                                  color="primary"
+                                                  size="small"
+                                                />
+                                              )}
+                                              {isSlaBreach ? (
+                                                <Chip
+                                                  label="SLA Breach"
+                                                  color="warning"
+                                                  size="small"
+                                                />
+                                              ) : (
+                                                <Chip
+                                                  label="Completed"
+                                                  color="success"
+                                                  size="small"
+                                                />
+                                              )}
+                                            </Box>
+                                            <Typography
+                                              variant="body2"
+                                              color="text.secondary"
+                                              sx={{ mb: 0.5 }}>
+                                              Type: {nodeType}
+                                            </Typography>
+                                            {action.details?.node?.config
+                                              ?.payload?.role && (
+                                              <Typography
+                                                variant="caption"
+                                                color="text.secondary"
+                                                display="block">
+                                                Role:{' '}
+                                                {
+                                                  action.details.node.config
+                                                    .payload.role
+                                                }
+                                              </Typography>
+                                            )}
+                                            {action.details?.node?.config
+                                              ?.payload?.group && (
+                                              <Typography
+                                                variant="caption"
+                                                color="text.secondary"
+                                                display="block">
+                                                Group:{' '}
+                                                {
+                                                  action.details.node.config
+                                                    .payload.group
+                                                }
+                                              </Typography>
+                                            )}
+                                            {action.details?.outputs && (
+                                              <Box sx={{ mt: 1 }}>
+                                                <Chip
+                                                  label={
+                                                    action.details.outputs
+                                                      .isApproved
+                                                      ? 'Approved'
+                                                      : 'Rejected'
+                                                  }
+                                                  color={
+                                                    action.details.outputs
+                                                      .isApproved
+                                                      ? 'success'
+                                                      : 'error'
+                                                  }
+                                                  size="small"
+                                                />
+                                                {action.details.outputs
+                                                  .remark && (
+                                                  <Typography
+                                                    variant="caption"
+                                                    display="block"
+                                                    sx={{ mt: 0.5 }}>
+                                                    Remark:{' '}
+                                                    {
+                                                      action.details.outputs
+                                                        .remark
+                                                    }
+                                                  </Typography>
+                                                )}
+                                              </Box>
+                                            )}
+                                            <Typography
+                                              variant="caption"
+                                              color="text.secondary"
+                                              display="block"
+                                              sx={{ mt: 0.5 }}>
+                                              {action.completedAt === null ? (
+                                                <>
+                                                  Started by:{' '}
+                                                  {action.performedBy} •{' '}
+                                                  {new Date(
+                                                    action.createdAt,
+                                                  ).toLocaleString()}
+                                                  {' • '}
+                                                  <span
+                                                    style={{
+                                                      color: '#ff9800',
+                                                    }}>
+                                                    Not completed (SLA breach)
+                                                  </span>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  Performed by:{' '}
+                                                  {action.performedBy} •{' '}
+                                                  {new Date(
+                                                    action.completedAt,
+                                                  ).toLocaleString()}
+                                                </>
+                                              )}
+                                            </Typography>
+                                          </Box>
+                                        </Box>
+                                      );
+                                    },
+                                  )}
+
+                                  {/* End Node - Always at bottom */}
+                                  {endNode && (
+                                    <Box
+                                      sx={{
+                                        display: 'flex',
+                                      }}>
+                                      {/* Timeline Center - Icon and Line */}
+                                      <Box
+                                        sx={{
+                                          display: 'flex',
+                                          flexDirection: 'column',
+                                          alignItems: 'center',
+                                          mr: 2,
+                                        }}>
+                                        <Box
+                                          sx={{
+                                            width: 40,
+                                            height: 40,
+                                            borderRadius: '50%',
+                                            bgcolor:
+                                              instance.status === 'completed'
+                                                ? '#4caf5020'
+                                                : '#9e9e9e20',
+                                            border:
+                                              instance.status === 'completed'
+                                                ? '2px solid #4caf50'
+                                                : '2px solid #9e9e9e',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            opacity:
+                                              instance.status === 'completed'
+                                                ? 1
+                                                : 0.5,
+                                          }}>
+                                          <CheckCircle
+                                            size={20}
+                                            color={
+                                              instance.status === 'completed'
+                                                ? '#4caf50'
+                                                : '#9e9e9e'
+                                            }
+                                          />
+                                        </Box>
+                                      </Box>
+
+                                      {/* Timeline Right - Content */}
+                                      <Box sx={{ flex: 1 }}>
+                                        <Box
+                                          sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                            mb: 0.5,
+                                          }}>
+                                          <Typography
+                                            variant="subtitle2"
+                                            component="span"
+                                            fontWeight="bold">
+                                            {endNode.config?.payload?.name ||
+                                              'End'}
+                                          </Typography>
+                                          {instance.status === 'completed' && (
+                                            <Chip
+                                              label="Completed"
+                                              color="success"
+                                              size="small"
+                                            />
+                                          )}
+                                          {instance.status === 'running' && (
+                                            <Chip
+                                              label="Pending"
+                                              color="default"
+                                              size="small"
+                                            />
+                                          )}
+                                        </Box>
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary">
+                                          Type: end
+                                        </Typography>
+                                        {endActionData && (
+                                          <Typography
+                                            variant="caption"
+                                            color="text.secondary"
+                                            display="block"
+                                            sx={{ mt: 0.5 }}>
+                                            Performed by:{' '}
+                                            {endActionData.performedBy} •{' '}
+                                            {new Date(
+                                              endActionData.completedAt,
+                                            ).toLocaleString()}
+                                          </Typography>
+                                        )}
+                                      </Box>
+                                    </Box>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </Paper>
+                        </Box>
+                      </>
+                    ) : (
+                      <Box sx={{ py: 4, textAlign: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">
+                          No workflow stage information available
+                        </Typography>
+                      </Box>
+                    )}
                   </Box>
                 </Collapse>
               )}
@@ -290,366 +783,17 @@ export const WorkflowHistory: FC = () => {
         })}
       </Box>
 
-      {submissions.length === 0 && (
+      {instances.length === 0 && (
         <Box sx={{ textAlign: 'center', py: 12 }}>
           <FileText size={64} color="#ccc" style={{ margin: '0 auto 16px' }} />
           <Typography variant="h6" color="text.secondary" gutterBottom>
-            No submissions found
+            No workflow instances found
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Submit a form first to see workflow history
+            Submit a form to create a workflow instance
           </Typography>
         </Box>
       )}
     </Box>
   );
 };
-
-// Mock function to generate workflow history based on actual parallel workflow structure
-function generateMockWorkflowHistory(submission: Submission): WorkflowHistory {
-  const submissionDate = new Date(submission.createdAt);
-
-  // Determine workflow status based on submission ID
-  const statusType = submission.id % 4;
-
-  // Time helpers
-  const addMinutes = (date: Date, minutes: number) =>
-    new Date(date.getTime() + minutes * 60 * 1000).toISOString();
-  const addHours = (date: Date, hours: number) =>
-    new Date(date.getTime() + hours * 60 * 60 * 1000).toISOString();
-
-  const workflowName =
-    'Parallel Workflow (Manager + Senior Manager) from Two Departments';
-  let stages: WorkflowStage[];
-  let currentStage: string;
-  let status: 'active' | 'completed' | 'failed' | 'cancelled';
-
-  // Scenario 1: Completed workflow - both approvals granted
-  if (statusType === 0) {
-    status = 'completed';
-    currentStage = 'end';
-    stages = [
-      {
-        key: 'start',
-        name: 'Workflow Started',
-        type: 'start',
-        status: 'completed',
-        startedAt: submissionDate.toISOString(),
-        completedAt: submissionDate.toISOString(),
-        description: 'Workflow initiated successfully',
-      },
-      {
-        key: 'notify_operation_manager',
-        name: 'Notify Operation Manager',
-        type: 'service',
-        status: 'completed',
-        startedAt: addMinutes(submissionDate, 1),
-        completedAt: addMinutes(submissionDate, 2),
-        description: 'Notification sent to Operation Manager',
-      },
-      {
-        key: 'notify_security_manager',
-        name: 'Notify Security Manager',
-        type: 'service',
-        status: 'completed',
-        startedAt: addMinutes(submissionDate, 1),
-        completedAt: addMinutes(submissionDate, 2),
-        description: 'Notification sent to Security Manager',
-      },
-      {
-        key: 'operation_manager_approval',
-        name: 'Operation Manager Approval',
-        type: 'task',
-        status: 'completed',
-        assignedTo: 'Operation Manager (Manager Role)',
-        startedAt: addMinutes(submissionDate, 2),
-        completedAt: addHours(submissionDate, 8),
-        description: 'Operation department manager approval - APPROVED',
-      },
-      {
-        key: 'security_manager_approval',
-        name: 'Security Manager Approval',
-        type: 'task',
-        status: 'completed',
-        assignedTo: 'Security Manager (Senior Manager Role)',
-        startedAt: addMinutes(submissionDate, 2),
-        completedAt: addHours(submissionDate, 12),
-        description: 'Security department senior manager approval - APPROVED',
-      },
-      {
-        key: 'first_gateway_join',
-        name: 'Parallel Gateway Join',
-        type: 'task',
-        status: 'completed',
-        startedAt: addHours(submissionDate, 12),
-        completedAt: addHours(submissionDate, 12),
-        description:
-          'Both branches completed - Condition met (at least one approval)',
-      },
-      {
-        key: 'send_approved_noti',
-        name: 'Send Approval Notification',
-        type: 'service',
-        status: 'completed',
-        startedAt: addHours(submissionDate, 12),
-        completedAt: addHours(submissionDate, 12),
-        description: 'Approval notification sent to requester',
-      },
-      {
-        key: 'process_csv',
-        name: 'Process CSV Data',
-        type: 'service',
-        status: 'completed',
-        startedAt: addHours(submissionDate, 12),
-        completedAt: addHours(submissionDate, 13),
-        description: 'CSV data processing completed',
-      },
-      {
-        key: 'end',
-        name: 'Workflow Completed',
-        type: 'end',
-        status: 'completed',
-        startedAt: addHours(submissionDate, 13),
-        completedAt: addHours(submissionDate, 13),
-        description: 'Workflow completed successfully',
-      },
-    ];
-  }
-  // Scenario 2: In Progress - Waiting for approvals
-  else if (statusType === 1) {
-    status = 'active';
-    currentStage = 'operation_manager_approval';
-    stages = [
-      {
-        key: 'start',
-        name: 'Workflow Started',
-        type: 'start',
-        status: 'completed',
-        startedAt: submissionDate.toISOString(),
-        completedAt: submissionDate.toISOString(),
-        description: 'Workflow initiated successfully',
-      },
-      {
-        key: 'notify_operation_manager',
-        name: 'Notify Operation Manager',
-        type: 'service',
-        status: 'completed',
-        startedAt: addMinutes(submissionDate, 1),
-        completedAt: addMinutes(submissionDate, 2),
-        description: 'Notification sent to Operation Manager',
-      },
-      {
-        key: 'notify_security_manager',
-        name: 'Notify Security Manager',
-        type: 'service',
-        status: 'completed',
-        startedAt: addMinutes(submissionDate, 1),
-        completedAt: addMinutes(submissionDate, 2),
-        description: 'Notification sent to Security Manager',
-      },
-      {
-        key: 'operation_manager_approval',
-        name: 'Operation Manager Approval',
-        type: 'task',
-        status: 'in-progress',
-        assignedTo: 'Operation Manager (Manager Role)',
-        startedAt: addMinutes(submissionDate, 2),
-        description: 'Awaiting approval from Operation Manager',
-      },
-      {
-        key: 'security_manager_approval',
-        name: 'Security Manager Approval',
-        type: 'task',
-        status: 'in-progress',
-        assignedTo: 'Security Manager (Senior Manager Role)',
-        startedAt: addMinutes(submissionDate, 2),
-        description: 'Awaiting approval from Security Manager',
-      },
-      {
-        key: 'first_gateway_join',
-        name: 'Parallel Gateway Join',
-        type: 'task',
-        status: 'pending',
-        description: 'Waiting for at least one approval',
-      },
-      {
-        key: 'end',
-        name: 'Workflow Completed',
-        type: 'end',
-        status: 'pending',
-        description: 'Pending workflow completion',
-      },
-    ];
-  }
-  // Scenario 3: In Progress - One approval granted, processing CSV
-  else if (statusType === 2) {
-    status = 'active';
-    currentStage = 'process_csv';
-    stages = [
-      {
-        key: 'start',
-        name: 'Workflow Started',
-        type: 'start',
-        status: 'completed',
-        startedAt: submissionDate.toISOString(),
-        completedAt: submissionDate.toISOString(),
-        description: 'Workflow initiated successfully',
-      },
-      {
-        key: 'notify_operation_manager',
-        name: 'Notify Operation Manager',
-        type: 'service',
-        status: 'completed',
-        startedAt: addMinutes(submissionDate, 1),
-        completedAt: addMinutes(submissionDate, 2),
-        description: 'Notification sent to Operation Manager',
-      },
-      {
-        key: 'notify_security_manager',
-        name: 'Notify Security Manager',
-        type: 'service',
-        status: 'completed',
-        startedAt: addMinutes(submissionDate, 1),
-        completedAt: addMinutes(submissionDate, 2),
-        description: 'Notification sent to Security Manager',
-      },
-      {
-        key: 'operation_manager_approval',
-        name: 'Operation Manager Approval',
-        type: 'task',
-        status: 'completed',
-        assignedTo: 'Operation Manager (Manager Role)',
-        startedAt: addMinutes(submissionDate, 2),
-        completedAt: addHours(submissionDate, 6),
-        description: 'Operation department manager approval - APPROVED',
-      },
-      {
-        key: 'security_manager_approval',
-        name: 'Security Manager Approval',
-        type: 'task',
-        status: 'completed',
-        assignedTo: 'Security Manager (Senior Manager Role)',
-        startedAt: addMinutes(submissionDate, 2),
-        completedAt: addHours(submissionDate, 4),
-        description: 'Security department senior manager approval - REJECTED',
-      },
-      {
-        key: 'first_gateway_join',
-        name: 'Parallel Gateway Join',
-        type: 'task',
-        status: 'completed',
-        startedAt: addHours(submissionDate, 6),
-        completedAt: addHours(submissionDate, 6),
-        description:
-          'Condition met - Operation Manager approved (one approval required)',
-      },
-      {
-        key: 'send_approved_noti',
-        name: 'Send Approval Notification',
-        type: 'service',
-        status: 'completed',
-        startedAt: addHours(submissionDate, 6),
-        completedAt: addHours(submissionDate, 6),
-        description: 'Approval notification sent',
-      },
-      {
-        key: 'process_csv',
-        name: 'Process CSV Data',
-        type: 'service',
-        status: 'in-progress',
-        startedAt: addHours(submissionDate, 6),
-        description: 'Currently processing CSV data',
-      },
-      {
-        key: 'end',
-        name: 'Workflow Completed',
-        type: 'end',
-        status: 'pending',
-        description: 'Pending CSV processing completion',
-      },
-    ];
-  }
-  // Scenario 4: Failed - Both approvals rejected
-  else {
-    status = 'failed';
-    currentStage = 'send_rejected_noti';
-    stages = [
-      {
-        key: 'start',
-        name: 'Workflow Started',
-        type: 'start',
-        status: 'completed',
-        startedAt: submissionDate.toISOString(),
-        completedAt: submissionDate.toISOString(),
-        description: 'Workflow initiated successfully',
-      },
-      {
-        key: 'notify_operation_manager',
-        name: 'Notify Operation Manager',
-        type: 'service',
-        status: 'completed',
-        startedAt: addMinutes(submissionDate, 1),
-        completedAt: addMinutes(submissionDate, 2),
-        description: 'Notification sent to Operation Manager',
-      },
-      {
-        key: 'notify_security_manager',
-        name: 'Notify Security Manager',
-        type: 'service',
-        status: 'completed',
-        startedAt: addMinutes(submissionDate, 1),
-        completedAt: addMinutes(submissionDate, 2),
-        description: 'Notification sent to Security Manager',
-      },
-      {
-        key: 'operation_manager_approval',
-        name: 'Operation Manager Approval',
-        type: 'task',
-        status: 'failed',
-        assignedTo: 'Operation Manager (Manager Role)',
-        startedAt: addMinutes(submissionDate, 2),
-        completedAt: addHours(submissionDate, 5),
-        description: 'Operation Manager REJECTED the request',
-      },
-      {
-        key: 'security_manager_approval',
-        name: 'Security Manager Approval',
-        type: 'task',
-        status: 'failed',
-        assignedTo: 'Security Manager (Senior Manager Role)',
-        startedAt: addMinutes(submissionDate, 2),
-        completedAt: addHours(submissionDate, 7),
-        description: 'Security Manager REJECTED the request',
-      },
-      {
-        key: 'send_rejected_noti',
-        name: 'Send Rejection Notification',
-        type: 'service',
-        status: 'completed',
-        startedAt: addHours(submissionDate, 7),
-        completedAt: addHours(submissionDate, 7),
-        description: 'Rejection notification sent - Both managers rejected',
-      },
-      {
-        key: 'end',
-        name: 'Workflow Terminated',
-        type: 'end',
-        status: 'failed',
-        startedAt: addHours(submissionDate, 7),
-        completedAt: addHours(submissionDate, 7),
-        description: 'Workflow terminated due to rejections',
-      },
-    ];
-  }
-
-  return {
-    id: submission.id,
-    submissionId: submission.id,
-    workflowName,
-    currentStage,
-    status,
-    stages,
-    createdAt: submission.createdAt,
-    updatedAt: new Date().toISOString(),
-  };
-}

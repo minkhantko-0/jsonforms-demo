@@ -10,7 +10,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useNotificationStream } from './hooks/useNotificationStream';
 import { Envs } from './utils/envs';
 import { WorkFlowBuilder } from './components/WorkFlowBuilder';
-import { SLASetUp } from './components/SLASetUp';
 import { FormMapping } from './components/FormMapping';
 import {
   FileText,
@@ -18,13 +17,11 @@ import {
   Bell,
   GitBranch,
   Workflow,
-  Settings,
   Menu,
   X,
   Wifi,
   WifiOff,
   History,
-  Map,
   TableConfig,
 } from 'lucide-react';
 import {
@@ -51,7 +48,6 @@ const App = () => {
     | 'notifications'
     | 'workflows'
     | 'builder'
-    | 'setup'
     | 'history'
   >('form');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -81,7 +77,6 @@ const App = () => {
     },
     { id: 'workflows', label: 'Workflow Management', icon: GitBranch },
     { id: 'builder', label: 'Workflow Builder', icon: Workflow },
-    { id: 'setup', label: 'SLA Setup', icon: Settings },
   ];
 
   const drawerWidth = 240;
@@ -221,7 +216,6 @@ const App = () => {
           {page === 'notifications' && <Notifications />}
           {page === 'workflows' && <AuthorizedWorkflows />}
           {page === 'builder' && <WorkFlowBuilder />}
-          {page === 'setup' && <SLASetUp />}
         </Box>
       </Box>
     </Box>

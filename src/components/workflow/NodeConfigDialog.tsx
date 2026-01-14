@@ -16,11 +16,23 @@ import {
   SelectChangeEvent,
   Typography,
   Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  IconButton,
 } from '@mui/material';
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  ExpandMore as ExpandMoreIcon,
+} from '@mui/icons-material';
 import {
   NodeConfig,
   ServicePayload,
   ParallelBranch,
+  SLA,
+  SLALevel,
+  SLAAction,
 } from '../../types/workflow';
 
 interface NodeConfigDialogProps {
@@ -62,8 +74,7 @@ export function NodeConfigDialog({
   >('none');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
-  const [selectedSLAs, setSelectedSLAs] = useState<string[]>([]);
-  const [selectedTimers, setSelectedTimers] = useState<string[]>([]);
+  const [sla, setSla] = useState<SLA | null>(null);
   const [httpMethod, setHttpMethod] = useState<
     'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
   >('POST');
@@ -83,8 +94,7 @@ export function NodeConfigDialog({
         if (initialData.config.type === 'assignment') {
           setSelectedRoles(initialData.config.roles || []);
           setSelectedGroups(initialData.config.groups || []);
-          setSelectedSLAs(initialData.config.slas || []);
-          setSelectedTimers(initialData.config.timers || []);
+          setSla(initialData.config.slas?.[0] || null);
         } else if (initialData.config.type === 'service') {
           const payload = initialData.config.payload;
           if (payload) {
@@ -111,8 +121,7 @@ export function NodeConfigDialog({
       setConfigType('none');
       setSelectedRoles([]);
       setSelectedGroups([]);
-      setSelectedSLAs([]);
-      setSelectedTimers([]);
+      setSla(null);
       setHttpMethod('POST');
       setUrl('');
       setRequestBody('{}');
@@ -132,14 +141,99 @@ export function NodeConfigDialog({
     setSelectedGroups(typeof value === 'string' ? value.split(',') : value);
   };
 
-  const handleSLAChange = (event: SelectChangeEvent<string[]>) => {
-    const value = event.target.value;
-    setSelectedSLAs(typeof value === 'string' ? value.split(',') : value);
+  const addSLA = () => {
+    setSla({
+      name: `SLA for ${label || 'Task'}`,
+      variant: 'node',
+      levels: [],
+    });
   };
 
-  const handleTimerChange = (event: SelectChangeEvent<string[]>) => {
-    const value = event.target.value;
-    setSelectedTimers(typeof value === 'string' ? value.split(',') : value);
+  const addSLALevel = () => {
+    if (!sla) return;
+    const newLevel: SLALevel = {
+      level: sla.levels.length + 1,
+      targetDuration: '30mins',
+      condition: {
+        type: 'jexl',
+        expression: "${local.variables.status} == 'pending'",
+      },
+      actions: [],
+    };
+    setSla({ ...sla, levels: [...sla.levels, newLevel] });
+  };
+
+  const updateSLALevel = (
+    levelIndex: number,
+    field: keyof SLALevel,
+    value: any,
+  ) => {
+    if (!sla) return;
+    const updatedLevels = [...sla.levels];
+    updatedLevels[levelIndex] = {
+      ...updatedLevels[levelIndex],
+      [field]: value,
+    };
+    setSla({ ...sla, levels: updatedLevels });
+  };
+
+  const deleteSLALevel = (levelIndex: number) => {
+    if (!sla) return;
+    const updatedLevels = sla.levels.filter((_, idx) => idx !== levelIndex);
+    setSla({ ...sla, levels: updatedLevels });
+  };
+
+  const addSLAAction = (
+    levelIndex: number,
+    actionType: 'service' | 'escalate' | 'mutation',
+  ) => {
+    if (!sla) return;
+    const updatedLevels = [...sla.levels];
+    const newAction: SLAAction = {
+      name: `Action ${updatedLevels[levelIndex].actions.length + 1}`,
+      type: actionType,
+      config: {
+        type: actionType === 'service' ? 'http' : actionType,
+        ...(actionType === 'service' && {
+          method: 'POST',
+          url: '',
+          body: {},
+        }),
+        ...(actionType === 'escalate' && { roles: [] }),
+        ...(actionType === 'mutation' && { toNode: '' }),
+      },
+    };
+    updatedLevels[levelIndex].actions.push(newAction);
+    setSla({ ...sla, levels: updatedLevels });
+  };
+
+  const updateSLAAction = (
+    levelIndex: number,
+    actionIndex: number,
+    field: string,
+    value: any,
+  ) => {
+    if (!sla) return;
+    const updatedLevels = [...sla.levels];
+    const action = updatedLevels[levelIndex].actions[actionIndex];
+
+    if (field.startsWith('config.')) {
+      const configField = field.split('.')[1];
+      action.config = { ...action.config, [configField]: value };
+    } else {
+      (action as any)[field] = value;
+    }
+
+    setSla({ ...sla, levels: updatedLevels });
+  };
+
+  const deleteSLAAction = (levelIndex: number, actionIndex: number) => {
+    if (!sla) return;
+    const updatedLevels = [...sla.levels];
+    updatedLevels[levelIndex].actions = updatedLevels[
+      levelIndex
+    ].actions.filter((_, idx) => idx !== actionIndex);
+    setSla({ ...sla, levels: updatedLevels });
   };
 
   const handleSave = () => {
@@ -150,8 +244,7 @@ export function NodeConfigDialog({
         type: 'assignment',
         roles: selectedRoles,
         groups: selectedGroups,
-        slas: selectedSLAs,
-        timers: selectedTimers,
+        ...(sla && sla.levels.length > 0 && { slas: [sla] }),
       };
     } else if (configType === 'service') {
       try {
@@ -292,61 +385,312 @@ export function NodeConfigDialog({
                     </Select>
                   </FormControl>
 
-                  <FormControl fullWidth>
-                    <InputLabel>SLAs</InputLabel>
-                    <Select
-                      multiple
-                      value={selectedSLAs}
-                      onChange={handleSLAChange}
-                      input={<OutlinedInput label="SLAs" />}
-                      renderValue={selected => (
-                        <Box
-                          sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {selected.map(value => (
-                            <Chip
-                              key={value}
-                              label={value}
-                              size="small"
-                              color="primary"
-                            />
-                          ))}
-                        </Box>
-                      )}>
-                      {availableSLAs.map(sla => (
-                        <MenuItem key={sla} value={sla}>
-                          {sla}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  {/* SLA Configuration */}
+                  <Divider sx={{ my: 2 }} />
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}>
+                    <Typography variant="subtitle2">
+                      SLA Configuration (Optional)
+                    </Typography>
+                    {!sla ? (
+                      <Button
+                        startIcon={<AddIcon />}
+                        onClick={addSLA}
+                        size="small"
+                        variant="outlined">
+                        Add SLA
+                      </Button>
+                    ) : (
+                      <Button
+                        startIcon={<DeleteIcon />}
+                        onClick={() => setSla(null)}
+                        size="small"
+                        color="error">
+                        Remove SLA
+                      </Button>
+                    )}
+                  </Box>
 
-                  <FormControl fullWidth>
-                    <InputLabel>Timers</InputLabel>
-                    <Select
-                      multiple
-                      value={selectedTimers}
-                      onChange={handleTimerChange}
-                      input={<OutlinedInput label="Timers" />}
-                      renderValue={selected => (
-                        <Box
-                          sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {selected.map(value => (
-                            <Chip
-                              key={value}
-                              label={value}
+                  {sla && (
+                    <Box sx={{ mt: 2 }}>
+                      <TextField
+                        label="SLA Name"
+                        value={sla.name}
+                        onChange={e => setSla({ ...sla, name: e.target.value })}
+                        fullWidth
+                        size="small"
+                        sx={{ mb: 2 }}
+                      />
+
+                      <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                        <InputLabel>Variant</InputLabel>
+                        <Select
+                          value={sla.variant}
+                          onChange={e =>
+                            setSla({
+                              ...sla,
+                              variant: e.target.value as 'node' | 'workflow',
+                            })
+                          }
+                          label="Variant">
+                          <MenuItem value="node">Node</MenuItem>
+                          <MenuItem value="workflow">Workflow</MenuItem>
+                        </Select>
+                      </FormControl>
+
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          mb: 1,
+                        }}>
+                        <Typography variant="body2" fontWeight="bold">
+                          SLA Levels
+                        </Typography>
+                        <Button
+                          startIcon={<AddIcon />}
+                          onClick={addSLALevel}
+                          size="small">
+                          Add Level
+                        </Button>
+                      </Box>
+
+                      {sla.levels.map((level, levelIdx) => (
+                        <Accordion key={levelIdx} sx={{ mb: 1 }}>
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Typography>
+                              Level {level.level} - {level.targetDuration}
+                            </Typography>
+                            <IconButton
                               size="small"
-                              color="secondary"
-                            />
-                          ))}
-                        </Box>
-                      )}>
-                      {availableTimers.map(timer => (
-                        <MenuItem key={timer} value={timer}>
-                          {timer}
-                        </MenuItem>
+                              onClick={e => {
+                                e.stopPropagation();
+                                deleteSLALevel(levelIdx);
+                              }}
+                              sx={{ ml: 'auto', mr: 1 }}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 2,
+                              }}>
+                              <TextField
+                                label="Target Duration"
+                                value={level.targetDuration}
+                                onChange={e =>
+                                  updateSLALevel(
+                                    levelIdx,
+                                    'targetDuration',
+                                    e.target.value,
+                                  )
+                                }
+                                size="small"
+                                fullWidth
+                                placeholder="e.g., 30mins, 1hour, 2days"
+                              />
+
+                              <TextField
+                                label="Condition Expression"
+                                value={level.condition.expression}
+                                onChange={e =>
+                                  updateSLALevel(levelIdx, 'condition', {
+                                    type: 'jexl',
+                                    expression: e.target.value,
+                                  })
+                                }
+                                size="small"
+                                fullWidth
+                                multiline
+                                rows={2}
+                                placeholder="${local.variables.status} == 'pending'"
+                              />
+
+                              <Divider />
+                              <Box>
+                                <Box
+                                  sx={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    mb: 1,
+                                  }}>
+                                  <Typography variant="body2">
+                                    Actions
+                                  </Typography>
+                                  <Box sx={{ display: 'flex', gap: 1 }}>
+                                    <Button
+                                      size="small"
+                                      onClick={() =>
+                                        addSLAAction(levelIdx, 'service')
+                                      }>
+                                      + Service
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      onClick={() =>
+                                        addSLAAction(levelIdx, 'escalate')
+                                      }>
+                                      + Escalate
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      onClick={() =>
+                                        addSLAAction(levelIdx, 'mutation')
+                                      }>
+                                      + Mutation
+                                    </Button>
+                                  </Box>
+                                </Box>
+
+                                {level.actions.map((action, actionIdx) => (
+                                  <Box
+                                    key={actionIdx}
+                                    sx={{
+                                      p: 1.5,
+                                      border: 1,
+                                      borderColor: 'divider',
+                                      borderRadius: 1,
+                                      mb: 1,
+                                    }}>
+                                    <Box
+                                      sx={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        mb: 1,
+                                      }}>
+                                      <Chip
+                                        label={action.type}
+                                        size="small"
+                                        color="primary"
+                                      />
+                                      <IconButton
+                                        size="small"
+                                        onClick={() =>
+                                          deleteSLAAction(levelIdx, actionIdx)
+                                        }>
+                                        <DeleteIcon fontSize="small" />
+                                      </IconButton>
+                                    </Box>
+
+                                    <TextField
+                                      label="Action Name"
+                                      value={action.name || ''}
+                                      onChange={e =>
+                                        updateSLAAction(
+                                          levelIdx,
+                                          actionIdx,
+                                          'name',
+                                          e.target.value,
+                                        )
+                                      }
+                                      size="small"
+                                      fullWidth
+                                      sx={{ mb: 1 }}
+                                    />
+
+                                    {action.type === 'service' && (
+                                      <>
+                                        <TextField
+                                          label="URL"
+                                          value={action.config.url || ''}
+                                          onChange={e =>
+                                            updateSLAAction(
+                                              levelIdx,
+                                              actionIdx,
+                                              'config.url',
+                                              e.target.value,
+                                            )
+                                          }
+                                          size="small"
+                                          fullWidth
+                                          sx={{ mb: 1 }}
+                                        />
+                                        <FormControl
+                                          fullWidth
+                                          size="small"
+                                          sx={{ mb: 1 }}>
+                                          <InputLabel>Method</InputLabel>
+                                          <Select
+                                            value={
+                                              action.config.method || 'POST'
+                                            }
+                                            onChange={e =>
+                                              updateSLAAction(
+                                                levelIdx,
+                                                actionIdx,
+                                                'config.method',
+                                                e.target.value,
+                                              )
+                                            }
+                                            label="Method">
+                                            <MenuItem value="GET">GET</MenuItem>
+                                            <MenuItem value="POST">
+                                              POST
+                                            </MenuItem>
+                                            <MenuItem value="PUT">PUT</MenuItem>
+                                            <MenuItem value="DELETE">
+                                              DELETE
+                                            </MenuItem>
+                                          </Select>
+                                        </FormControl>
+                                      </>
+                                    )}
+
+                                    {action.type === 'escalate' && (
+                                      <TextField
+                                        label="Escalate to Roles (comma-separated)"
+                                        value={
+                                          action.config.roles?.join(', ') || ''
+                                        }
+                                        onChange={e =>
+                                          updateSLAAction(
+                                            levelIdx,
+                                            actionIdx,
+                                            'config.roles',
+                                            e.target.value
+                                              .split(',')
+                                              .map(r => r.trim()),
+                                          )
+                                        }
+                                        size="small"
+                                        fullWidth
+                                      />
+                                    )}
+
+                                    {action.type === 'mutation' && (
+                                      <TextField
+                                        label="Target Node"
+                                        value={action.config.toNode || ''}
+                                        onChange={e =>
+                                          updateSLAAction(
+                                            levelIdx,
+                                            actionIdx,
+                                            'config.toNode',
+                                            e.target.value,
+                                          )
+                                        }
+                                        size="small"
+                                        fullWidth
+                                      />
+                                    )}
+                                  </Box>
+                                ))}
+                              </Box>
+                            </Box>
+                          </AccordionDetails>
+                        </Accordion>
                       ))}
-                    </Select>
-                  </FormControl>
+                    </Box>
+                  )}
                 </>
               )}
 

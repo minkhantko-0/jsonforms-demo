@@ -80,15 +80,17 @@ export const eventsHandler = async (c: Context) => {
         const workflowApi = process.env.WORKFLOW_API || '';
         const fileName = uploadedUrls[0]?.split('/').pop() || 'unknown.csv';
 
-        await fetch(`http://localhost:3000/api/v1/workflows/start`, {
+        await fetch(`http://localhost:3002/api/v1/workflows/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             workflowId: data.workflowId,
             refId: submissionId.toString(),
             context: {
+              ...data,
               fileName,
               path: uploadedUrls[0] || '',
+              amount: data.amount,
             },
           }),
         });

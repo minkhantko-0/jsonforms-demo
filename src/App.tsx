@@ -25,6 +25,7 @@ import {
   WifiOff,
   History,
   Map,
+  TableConfig,
 } from 'lucide-react';
 import {
   Box,
@@ -69,7 +70,7 @@ const App = () => {
 
   const menuItems = [
     { id: 'form', label: 'Submit Form', icon: FileText },
-    { id: 'formMapping', label: 'Form Mapping', icon: Map },
+    { id: 'formMapping', label: 'Form Config', icon: TableConfig },
     { id: 'view', label: 'View Submissions', icon: List },
     { id: 'history', label: 'Workflow History', icon: History },
     {

@@ -203,7 +203,7 @@ export const FormMapping = () => {
     try {
       // Validate JSON
       const formSchema = JSON.parse(formData.formSchema);
-      const uiSchema = formData.uiSchema ? JSON.parse(formData.uiSchema) : null;
+      const uiSchema = JSON.parse(formData.uiSchema);
 
       if (!formData.name || !formData.workflowId) {
         setError('Name and Workflow are required');
@@ -251,12 +251,12 @@ export const FormMapping = () => {
           alignItems: 'center',
           mb: 3,
         }}>
-        <Typography variant="h4">Form Mapping</Typography>
+        <Box></Box>
         <Button
           variant="contained"
           startIcon={<Add />}
           onClick={() => handleOpen()}>
-          Create New Mapping
+          Create New Config
         </Button>
       </Box>
 
@@ -277,7 +277,7 @@ export const FormMapping = () => {
               <TableRow>
                 <TableCell colSpan={6} align="center">
                   <Typography color="textSecondary">
-                    No form mappings found. Create one to get started.
+                    No form configs found. Create one to get started.
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -332,7 +332,7 @@ export const FormMapping = () => {
 
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>
-          {editMode ? 'Edit Form Mapping' : 'Create Form Mapping'}
+          {editMode ? 'Edit Form Config' : 'Create Form Config'}
         </DialogTitle>
         <DialogContent>
           {error && (
@@ -412,7 +412,7 @@ export const FormMapping = () => {
 
           <Box>
             <Typography variant="subtitle2" gutterBottom>
-              UI Schema (JSON) - Optional
+              UI Schema (JSON) *
             </Typography>
             <Button
               variant="outlined"

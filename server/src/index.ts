@@ -16,26 +16,12 @@ import { notificationStreamHandler } from './routes/notificationStream';
 import { getWorkflowsHandler, createWorkflowHandler } from './routes/workflows';
 import { processCsvHandler } from './routes/processCsv';
 import {
-  getSlaTimerDefinitionsHandler,
-  createSlaTimerDefinitionsHandler,
-  getAllSlaTimerDefinitionsHandler,
-  getSlaTimerDefinitionByIdHandler,
-} from './routes/slaTimerDefinitions';
-import {
-  createSlaDefinitionsHandler,
-  getSlaDefinitionsHandler,
-} from './routes/slas';
-import {
-  createTimerDefinitionsHandler,
-  getTimerDefinitionsHandler,
-} from './routes/timers';
-import {
-  getWorkflowDefinitionsHandler,
-  getWorkflowDefinitionByIdHandler,
-  createWorkflowDefinitionHandler,
-  updateWorkflowDefinitionHandler,
-  deleteWorkflowDefinitionHandler,
-} from './routes/workflowDefinitions';
+  getFormMappingsHandler,
+  getFormMappingByIdHandler,
+  createFormMappingHandler,
+  updateFormMappingHandler,
+  deleteFormMappingHandler,
+} from './routes/formMappings';
 
 const app = new Hono();
 
@@ -53,27 +39,15 @@ app.get('/api/notifications/stream', notificationStreamHandler);
 app.get('/api/workflows', getWorkflowsHandler);
 app.post('/api/process-csv', processCsvHandler);
 
-// SLA/Timer Definition routes
-app.get('/api/sla-timer-definitions', getSlaTimerDefinitionsHandler);
-app.get('/api/sla-timer-definitions/all', getAllSlaTimerDefinitionsHandler);
-app.get('/api/sla-timer-definitions/:id', getSlaTimerDefinitionByIdHandler);
-app.post('/api/sla-timer-definitions', createSlaTimerDefinitionsHandler);
-
-// Separate SLA and Timer routes
-app.get('/api/v1/slas', getSlaDefinitionsHandler);
-app.post('/api/v1/slas', createSlaDefinitionsHandler);
-app.get('/api/v1/timers', getTimerDefinitionsHandler);
-app.post('/api/v1/timers', createTimerDefinitionsHandler);
-
 // Workflow upload route
 app.post('/api/v1/workflows', createWorkflowHandler);
 
-// Workflow Definition routes
-app.get('/api/workflow-definitions', getWorkflowDefinitionsHandler);
-app.get('/api/workflow-definitions/:id', getWorkflowDefinitionByIdHandler);
-app.post('/api/workflow-definitions', createWorkflowDefinitionHandler);
-app.put('/api/workflow-definitions/:id', updateWorkflowDefinitionHandler);
-app.delete('/api/workflow-definitions/:id', deleteWorkflowDefinitionHandler);
+// Form Mapping routes
+app.get('/api/form-mappings', getFormMappingsHandler);
+app.get('/api/form-mappings/:id', getFormMappingByIdHandler);
+app.post('/api/form-mappings', createFormMappingHandler);
+app.put('/api/form-mappings/:id', updateFormMappingHandler);
+app.delete('/api/form-mappings/:id', deleteFormMappingHandler);
 
 serve({ fetch: app.fetch, port: 3001 });
 console.log('Server running on http://localhost:3001');

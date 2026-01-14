@@ -153,7 +153,7 @@ export function NodeConfigDialog({
     if (!sla) return;
     const newLevel: SLALevel = {
       level: sla.levels.length + 1,
-      targetDuration: '30mins',
+      targetDuration: '0.1m',
       condition: {
         type: 'jexl',
         expression: "${local.variables.status} == 'pending'",
@@ -190,17 +190,29 @@ export function NodeConfigDialog({
     if (!sla) return;
     const updatedLevels = [...sla.levels];
     const newAction: SLAAction = {
-      name: `Action ${updatedLevels[levelIndex].actions.length + 1}`,
+      name:
+        actionType === 'service'
+          ? 'Send Reminder Noti'
+          : `Action ${updatedLevels[levelIndex].actions.length + 1}`,
       type: actionType,
       config: {
-        type: actionType === 'service' ? 'http' : actionType,
+        type:
+          actionType === 'service'
+            ? 'http'
+            : actionType === 'escalate'
+              ? 'role'
+              : 'transition',
         ...(actionType === 'service' && {
           method: 'POST',
-          url: '',
-          body: {},
+          url: 'https://41l5r34h-3001.asse.devtunnels.ms/api/notifications',
+          body: {
+            title: 'Check your inbox!',
+            message: 'Please check your inbox for tasks approval.',
+          },
+          headers: 'Authorization ${context.variables.access_token}',
         }),
-        ...(actionType === 'escalate' && { roles: [] }),
-        ...(actionType === 'mutation' && { toNode: '' }),
+        ...(actionType === 'escalate' && { roles: ['ceo'] }),
+        ...(actionType === 'mutation' && { toNode: 'end' }),
       },
     };
     updatedLevels[levelIndex].actions.push(newAction);
@@ -642,6 +654,59 @@ export function NodeConfigDialog({
                                             </MenuItem>
                                           </Select>
                                         </FormControl>
+                                        <TextField
+                                          label="Request Body (JSON)"
+                                          value={JSON.stringify(
+                                            action.config.body || {},
+                                            null,
+                                            2,
+                                          )}
+                                          onChange={e => {
+                                            try {
+                                              const parsed = JSON.parse(
+                                                e.target.value,
+                                              );
+                                              updateSLAAction(
+                                                levelIdx,
+                                                actionIdx,
+                                                'config.body',
+                                                parsed,
+                                              );
+                                            } catch (err) {
+                                              // Invalid JSON, update raw value
+                                              updateSLAAction(
+                                                levelIdx,
+                                                actionIdx,
+                                                'config.body',
+                                                e.target.value,
+                                              );
+                                            }
+                                          }}
+                                          size="small"
+                                          fullWidth
+                                          multiline
+                                          rows={4}
+                                          sx={{ mb: 1 }}
+                                          placeholder='{"key": "value"}'
+                                          helperText="Enter JSON format body"
+                                        />
+                                        <TextField
+                                          label="Headers"
+                                          value={action.config.headers || ''}
+                                          onChange={e =>
+                                            updateSLAAction(
+                                              levelIdx,
+                                              actionIdx,
+                                              'config.headers',
+                                              e.target.value,
+                                            )
+                                          }
+                                          size="small"
+                                          fullWidth
+                                          sx={{ mb: 1 }}
+                                          placeholder="Authorization ${context.variables.access_token}"
+                                          helperText="Optional headers"
+                                        />
                                       </>
                                     )}
 

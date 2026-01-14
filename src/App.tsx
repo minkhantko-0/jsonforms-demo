@@ -11,6 +11,7 @@ import { useNotificationStream } from './hooks/useNotificationStream';
 import { Envs } from './utils/envs';
 import { WorkFlowBuilder } from './components/WorkFlowBuilder';
 import { SLASetUp } from './components/SLASetUp';
+import { FormMapping } from './components/FormMapping';
 import {
   FileText,
   List,
@@ -23,6 +24,7 @@ import {
   Wifi,
   WifiOff,
   History,
+  Map,
 } from 'lucide-react';
 import {
   Box,
@@ -43,6 +45,7 @@ import {
 const App = () => {
   const [page, setPage] = useState<
     | 'form'
+    | 'formMapping'
     | 'view'
     | 'notifications'
     | 'workflows'
@@ -66,6 +69,7 @@ const App = () => {
 
   const menuItems = [
     { id: 'form', label: 'Submit Form', icon: FileText },
+    { id: 'formMapping', label: 'Form Mapping', icon: Map },
     { id: 'view', label: 'View Submissions', icon: List },
     { id: 'history', label: 'Workflow History', icon: History },
     {
@@ -210,6 +214,7 @@ const App = () => {
             p: page === 'form' ? 0 : 3,
           }}>
           {page === 'form' && <JsonFormsDemo />}
+          {page === 'formMapping' && <FormMapping />}
           {page === 'view' && <ViewSubmissions />}
           {page === 'history' && <WorkflowHistory />}
           {page === 'notifications' && <Notifications />}

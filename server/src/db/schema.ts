@@ -22,12 +22,6 @@ export const notifications = mysqlTable('notifications', {
   createdAt: timestamp('created_at').defaultNow(),
 });
 
-export const slaTimerDefinitions = mysqlTable('sla_timer_definitions', {
-  id: int('id').primaryKey().autoincrement(),
-  data: json('data').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-});
-
 export const workflowDefinitions = mysqlTable('workflow_definitions', {
   id: int('id').primaryKey().autoincrement(),
   name: varchar('name', { length: 255 }).notNull(),
@@ -36,14 +30,19 @@ export const workflowDefinitions = mysqlTable('workflow_definitions', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const workflowHistory = mysqlTable('workflow_history', {
+export const slaTimerDefinitions = mysqlTable('sla_timer_definitions', {
   id: int('id').primaryKey().autoincrement(),
-  submissionId: int('submission_id').notNull(),
-  workflowDefinitionId: int('workflow_definition_id'),
-  workflowName: varchar('workflow_name', { length: 255 }).notNull(),
-  currentStage: varchar('current_stage', { length: 255 }).notNull(),
-  status: varchar('status', { length: 50 }).notNull(), // 'active', 'completed', 'failed', 'cancelled'
-  stages: json('stages').notNull(), // Array of WorkflowStage objects
+  data: json('data').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const formMappings = mysqlTable('form_mappings', {
+  id: int('id').primaryKey().autoincrement(),
+  name: varchar('name', { length: 255 }).notNull(),
+  formSchema: json('form_schema').notNull(),
+  uiSchema: json('ui_schema'),
+  workflowId: varchar('workflow_id', { length: 255 }).notNull(),
+  description: varchar('description', { length: 500 }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

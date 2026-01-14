@@ -104,8 +104,6 @@ export function WorkFlowBuilder() {
     message: '',
     severity: 'success',
   });
-  const [availableSLAs, setAvailableSLAs] = useState<string[]>([]);
-  const [availableTimers, setAvailableTimers] = useState<string[]>([]);
   const [savedWorkflows, setSavedWorkflows] = useState<
     Array<{ id: number; name: string; data: WorkflowDefinition }>
   >([]);
@@ -113,33 +111,6 @@ export function WorkFlowBuilder() {
   const syncInProgress = useRef(false);
 
   const API_URL = 'https://41l5r34h-3000.asse.devtunnels.ms/';
-
-  // Load SLA/Timer definitions from API on mount
-  useEffect(() => {
-    const loadDefinitions = async () => {
-      try {
-        // Fetch SLAs
-        const slaResponse = await fetch(`${API_URL}api/v1/slas`);
-        if (slaResponse.ok) {
-          const slaData = await slaResponse.json();
-          const slaKeys = slaData.data?.map((sla: any) => sla.key) || [];
-          setAvailableSLAs(slaKeys);
-        }
-
-        // Fetch Timers
-        const timerResponse = await fetch(`${API_URL}api/v1/timers`);
-        if (timerResponse.ok) {
-          const timerData = await timerResponse.json();
-          const timerKeys =
-            timerData.data?.map((timer: any) => timer.key) || [];
-          setAvailableTimers(timerKeys);
-        }
-      } catch (error) {
-        console.error('Failed to load SLA/Timer definitions:', error);
-      }
-    };
-    loadDefinitions();
-  }, []);
 
   // Helper function to create better layout for imported workflows
   const createLayoutPositions = useCallback(
@@ -250,20 +221,7 @@ export function WorkFlowBuilder() {
         baseNode.description = node.data.label;
       }
       if (node.data.config) {
-        // Restructure config to nest roles and groups in payload
-        const config = { ...node.data.config };
-        if (config.roles || config.groups) {
-          const { roles, groups, ...rest } = config;
-          baseNode.config = {
-            ...rest,
-            payload: {
-              ...(roles && { roles }),
-              ...(groups && { groups }),
-            },
-          };
-        } else {
-          baseNode.config = config;
-        }
+        baseNode.config = node.data.config;
       }
       if (node.data.branches) {
         baseNode.branches = node.data.branches;
@@ -563,20 +521,7 @@ export function WorkFlowBuilder() {
         baseNode.description = node.data.label;
       }
       if (node.data.config) {
-        // Restructure config to nest roles and groups in payload
-        const config = { ...node.data.config };
-        if (config.roles || config.groups) {
-          const { roles, groups, ...rest } = config;
-          baseNode.config = {
-            ...rest,
-            payload: {
-              ...(roles && { roles }),
-              ...(groups && { groups }),
-            },
-          };
-        } else {
-          baseNode.config = config;
-        }
+        baseNode.config = node.data.config;
       }
       if (node.data.branches) {
         baseNode.branches = node.data.branches;
@@ -651,20 +596,7 @@ export function WorkFlowBuilder() {
         baseNode.description = node.data.label;
       }
       if (node.data.config) {
-        // Restructure config to nest roles and groups in payload
-        const config = { ...node.data.config };
-        if (config.roles || config.groups) {
-          const { roles, groups, ...rest } = config;
-          baseNode.config = {
-            ...rest,
-            payload: {
-              ...(roles && { roles }),
-              ...(groups && { groups }),
-            },
-          };
-        } else {
-          baseNode.config = config;
-        }
+        baseNode.config = node.data.config;
       }
       if (node.data.branches) {
         baseNode.branches = node.data.branches;
@@ -1165,8 +1097,6 @@ export function WorkFlowBuilder() {
         initialData={editingNodeData}
         availableRoles={availableRoles}
         availableGroups={availableGroups}
-        availableSLAs={availableSLAs}
-        availableTimers={availableTimers}
       />
 
       <EdgeConfigDialog

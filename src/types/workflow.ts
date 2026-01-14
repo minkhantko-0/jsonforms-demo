@@ -33,12 +33,45 @@ export interface WorkflowNode {
   branches?: ParallelBranch[];
 }
 
+export interface SLAAction {
+  name?: string;
+  type: 'service' | 'escalate' | 'mutation';
+  config: {
+    type: string;
+    method?: string;
+    url?: string;
+    body?: Record<string, unknown>;
+    headers?: string;
+    roles?: string[];
+    toNode?: string;
+  };
+  condition?: {
+    type: string;
+    expression: string | null;
+  };
+}
+
+export interface SLALevel {
+  level: number;
+  targetDuration: string;
+  condition: {
+    type: string;
+    expression: string;
+  };
+  actions: SLAAction[];
+}
+
+export interface SLA {
+  name: string;
+  variant: 'node' | 'workflow';
+  levels: SLALevel[];
+}
+
 export interface NodeConfig {
   type: 'assignment' | 'service';
   roles?: string[];
   groups?: string[];
-  slas?: string[];
-  timers?: string[];
+  slas?: SLA[];
   payload?: ServicePayload;
   dependencies?: string[];
   condition?: {

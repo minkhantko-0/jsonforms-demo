@@ -444,13 +444,21 @@ export const WorkflowHistory: FC = () => {
                                       const isCurrentNode =
                                         details.currentNode ===
                                         action.details?.node?.key;
+                                      const isCompleted =
+                                        action.completedAt !== null;
+                                      const isProcessing =
+                                        !isCompleted && nodeType === 'service';
                                       const isSlaBreach =
-                                        action.completedAt === null;
+                                        !isCompleted && nodeType !== 'service';
 
                                       let IconComponent = AlertCircle;
                                       let iconColor = '#2196f3';
 
-                                      if (isSlaBreach) {
+                                      if (isProcessing) {
+                                        // Service node processing
+                                        IconComponent = AlertCircle;
+                                        iconColor = '#2196f3';
+                                      } else if (isSlaBreach) {
                                         // SLA Breach - node was skipped
                                         IconComponent = AlertTriangle;
                                         iconColor = '#ff9800';
@@ -550,7 +558,13 @@ export const WorkflowHistory: FC = () => {
                                                   size="small"
                                                 />
                                               )}
-                                              {isSlaBreach ? (
+                                              {isProcessing ? (
+                                                <Chip
+                                                  label="Processing"
+                                                  color="info"
+                                                  size="small"
+                                                />
+                                              ) : isSlaBreach ? (
                                                 <Chip
                                                   label="SLA Breach"
                                                   color="warning"
@@ -633,7 +647,31 @@ export const WorkflowHistory: FC = () => {
                                               color="text.secondary"
                                               display="block"
                                               sx={{ mt: 0.5 }}>
-                                              {action.completedAt === null ? (
+                                              {isCompleted ? (
+                                                <>
+                                                  Performed by:{' '}
+                                                  {action.performedBy} •{' '}
+                                                  Completed at:{' '}
+                                                  {new Date(
+                                                    action.completedAt,
+                                                  ).toLocaleString()}
+                                                </>
+                                              ) : isProcessing ? (
+                                                <>
+                                                  Started by:{' '}
+                                                  {action.performedBy} •{' '}
+                                                  {new Date(
+                                                    action.createdAt,
+                                                  ).toLocaleString()}
+                                                  {' • '}
+                                                  <span
+                                                    style={{
+                                                      color: '#2196f3',
+                                                    }}>
+                                                    Processing...
+                                                  </span>
+                                                </>
+                                              ) : (
                                                 <>
                                                   Started by:{' '}
                                                   {action.performedBy} •{' '}
@@ -647,14 +685,6 @@ export const WorkflowHistory: FC = () => {
                                                     }}>
                                                     Not completed (SLA breach)
                                                   </span>
-                                                </>
-                                              ) : (
-                                                <>
-                                                  Performed by:{' '}
-                                                  {action.performedBy} •{' '}
-                                                  {new Date(
-                                                    action.completedAt,
-                                                  ).toLocaleString()}
                                                 </>
                                               )}
                                             </Typography>

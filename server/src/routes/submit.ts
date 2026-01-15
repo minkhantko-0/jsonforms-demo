@@ -31,16 +31,22 @@ export const submitHandler = async (c: Context) => {
     const contentType = c.req.header('content-type') || '';
     let data: any;
     let schema: any;
+    let workflowId: string | undefined;
+    let refId: string | undefined;
+    let createdBy: string | undefined;
     let formData: FormData | null = null;
 
     if (contentType.includes('multipart/form-data')) {
       formData = await c.req.formData();
       schema = JSON.parse(formData.get('schema') as string);
       data = JSON.parse(formData.get('data') as string);
+      workflowId = formData.get('workflowId') as string | undefined;
+      refId = formData.get('refId') as string | undefined;
+      createdBy = formData.get('createdBy') as string | undefined;
       
       // Add file field placeholders for validation
       for (const [key, value] of formData.entries()) {
-        if (key !== 'data' && key !== 'schema' && value instanceof File) {
+        if (key !== 'data' && key !== 'schema' && key !== 'workflowId' && key !== 'refId' && key !== 'createdBy' && value instanceof File) {
           data[key] = value.name;
         }
       }
@@ -48,6 +54,9 @@ export const submitHandler = async (c: Context) => {
       const body = await c.req.json();
       data = body.data;
       schema = body.schema;
+      workflowId = body.workflowId;
+      refId = body.refId;
+      createdBy = body.createdBy;
     }
 
     const zodSchemaString = jsonSchemaToZod(schema);
@@ -62,6 +71,36 @@ export const submitHandler = async (c: Context) => {
     });
 
     await createNotification('Form Accepted', 'Form data validated and accepted for processing');
+
+    // If workflow info provided, start workflow
+    if (workflowId && refId && createdBy) {
+      try {
+        const workflowResponse = await fetch(`${process.env.WORKFLOW_API_URL || 'http://localhost:3002'}/api/v1/workflows/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            workflowId,
+            refId,
+            context: data,
+            createdBy,
+          }),
+        });
+
+        if (!workflowResponse.ok) {
+          throw new Error('Failed to start workflow');
+        }
+
+        const workflowResult = await workflowResponse.json();
+        await createNotification('Workflow Started', `Workflow ${workflowId} started for ${refId}`);
+        
+        return c.json({ success: true, sessionId, workflowInstance: workflowResult });
+      } catch (workflowError: any) {
+        console.error('Workflow start error:', workflowError);
+        await createNotification('Workflow Error', workflowError.message);
+        return c.json({ success: true, sessionId, workflowError: workflowError.message });
+      }
+    }
+
     await new Promise(resolve => setTimeout(resolve, 3000));
     return c.json({ success: true, sessionId });
   } catch (error: any) {

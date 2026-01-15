@@ -475,6 +475,8 @@ const InstanceCard: FC<InstanceCardProps> = ({
                                 actionStatus === 'processing';
                               const isSlaBreach =
                                 actionStatus === 'sla-breached';
+                              const isPending = actionStatus === 'pending';
+                              const isFailed = actionStatus === 'failed';
 
                               let IconComponent = AlertCircle;
                               let iconColor = '#2196f3';
@@ -502,6 +504,12 @@ const InstanceCard: FC<InstanceCardProps> = ({
                               } else if (isCompleted) {
                                 IconComponent = CheckCircle;
                                 iconColor = '#4caf50';
+                              } else if (isPending) {
+                                IconComponent = Clock;
+                                iconColor = '#9e9e9e';
+                              } else if (isFailed) {
+                                IconComponent = XCircle;
+                                iconColor = '#f44336';
                               }
 
                               return (
@@ -591,12 +599,26 @@ const InstanceCard: FC<InstanceCardProps> = ({
                                           color="warning"
                                           size="small"
                                         />
-                                      ) : (
+                                      ) : isPending ? (
                                         <Chip
-                                          label="Completed"
-                                          color="success"
+                                          label="Pending"
+                                          color="default"
                                           size="small"
                                         />
+                                      ) : isFailed ? (
+                                        <Chip
+                                          label="Failed"
+                                          color="error"
+                                          size="small"
+                                        />
+                                      ) : (
+                                        isCompleted && (
+                                          <Chip
+                                            label="Completed"
+                                            color="success"
+                                            size="small"
+                                          />
+                                        )
                                       )}
                                     </Box>
                                     <Typography
@@ -672,7 +694,7 @@ const InstanceCard: FC<InstanceCardProps> = ({
                                             action.completedAt,
                                           ).toLocaleString()}
                                         </>
-                                      ) : isProcessing ? (
+                                      ) : isProcessing || isPending ? (
                                         <>
                                           Started by: {action.performedBy} •{' '}
                                           {new Date(

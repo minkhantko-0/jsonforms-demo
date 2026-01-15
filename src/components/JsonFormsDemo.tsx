@@ -170,6 +170,7 @@ export const JsonFormsDemo: FC = () => {
 
         formData.append('data', JSON.stringify(cleanData));
         formData.append('schema', JSON.stringify(schema));
+        console.log(formData);
 
         response = await fetch(`${Envs.API_URL}/api/submit`, {
           method: 'POST',

@@ -1,0 +1,33 @@
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Title",
+      "minLength": 3,
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "filePicker": {
+      "type": "string",
+      "format": "data-url",
+      "title": "Upload Document",
+      "maxLength": 5242880,
+      "pattern": ".*\\.csv$",
+      "errorMessage": {
+        "pattern": "Only CSV files are allowed",
+        "maxLength": "File size must be less than 5MB"
+      }
+    }
+  },
+  "required": ["title", "filePicker"],
+  "errorMessage": {
+    "required": {
+      "title": "Title is required",
+      "filePicker": "File upload is required"
+    }
+  }
+}

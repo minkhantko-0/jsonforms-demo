@@ -1,0 +1,25 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/title"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/description",
+      "options": {
+        "multi": true
+      }
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/amount",
+      "options": {
+        "inputProps": {
+          "onKeyDown": "preventPlusMinus"
+        }
+      }
+    }
+  ]
+}

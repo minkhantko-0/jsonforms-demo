@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Title",
+      "minLength": 3,
+      "maxLength": 100
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount",
+      "minimum": 0,
+      "errorMessage": {
+        "minimum": "Amount must be a non-negative number"
+      }
+    }
+  },
+  "required": ["title", "amount"],
+  "errorMessage": {
+    "required": {
+      "title": "Title is required",
+      "amount": "Amount is required"
+    }
+  }
+}

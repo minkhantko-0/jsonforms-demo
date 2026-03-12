@@ -1,6 +1,6 @@
 employee_id,name,action,status
-123456,Ko Nanda Min Naing,Reading,true
-654321,U Pyae,Eating,true
-234567,Min Khant Ko,Listening,false
-345678,Myo Min Htoo,Running,false
-456789,Pyae Sone Phyo,Sitting,true
+123456,Ko Nanda Min Naing,Requsting VPN,true
+654321,U Pyae,Requesting VPN,true
+234567,Min Khant Ko,Requesting Firewall,false
+345678,Myo Min Htoo,Requesting Firewall,false
+456789,Pyae Sone Phyo,Requesting VPN,true

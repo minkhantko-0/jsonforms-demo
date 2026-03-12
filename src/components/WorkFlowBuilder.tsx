@@ -688,9 +688,10 @@ export function WorkFlowBuilder() {
                   x: 100,
                   y: index * 150,
                 };
+                const id = `${Date.now()}-${index}`;
                 return {
-                  id: `${Date.now()}-${index}`,
-                  type: 'customNode',
+                  id,
+                  type: 'custom',
                   position,
                   data: {
                     label: wfNode.description || wfNode.key,
@@ -698,6 +699,18 @@ export function WorkFlowBuilder() {
                     nodeType: wfNode.type,
                     config: wfNode.config,
                     branches: wfNode.branches,
+                    onDelete: (nodeId: string) => {
+                      setNodes(nds => nds.filter(n => n.id !== nodeId));
+                      setEdges(eds =>
+                        eds.filter(
+                          e => e.source !== nodeId && e.target !== nodeId,
+                        ),
+                      );
+                    },
+                    onEdit: (nodeId: string) => {
+                      setEditingNode(nodeId);
+                      setNodeConfigOpen(true);
+                    },
                   },
                 };
               },
@@ -716,10 +729,18 @@ export function WorkFlowBuilder() {
                   id: `e${Date.now()}-${index}`,
                   source: sourceNode?.id || '',
                   target: targetNode?.id || '',
-                  type: 'customEdge',
+                  type: 'custom',
+                  markerEnd: { type: MarkerType.ArrowClosed },
                   data: {
                     branch: trans.branch,
                     condition: trans.config?.payload?.expression,
+                    onDelete: (id: string) => {
+                      setEdges(eds => eds.filter(e => e.id !== id));
+                    },
+                    onEdit: (id: string) => {
+                      setEditingEdge(id);
+                      setEdgeConfigDialog(true);
+                    },
                   },
                 };
               },

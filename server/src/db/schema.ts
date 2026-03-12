@@ -5,6 +5,7 @@ import {
   timestamp,
   varchar,
   boolean,
+  uniqueIndex,
 } from 'drizzle-orm/mysql-core';
 
 export const submissions = mysqlTable('submissions', {
@@ -46,3 +47,37 @@ export const formMappings = mysqlTable('form_mappings', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+export const forms = mysqlTable(
+  'forms',
+  {
+    id: int('id').primaryKey().autoincrement(),
+    name: varchar('name', { length: 255 }).notNull(),
+    key: varchar('key', { length: 255 }).notNull(),
+    schema: json('schema').notNull(),
+    uiSchema: json('ui_schema'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  table => ({
+    formKeyUnique: uniqueIndex('forms_key_unique').on(table.key),
+  }),
+);
+
+export const formWorkflowMappings = mysqlTable(
+  'form_workflow_mappings',
+  {
+    id: int('id').primaryKey().autoincrement(),
+    formKey: varchar('form_key', { length: 255 }).notNull(),
+    workflowKey: varchar('workflow_key', { length: 255 }).notNull(),
+    status: varchar('status', { length: 32 }).notNull().default('active'),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  table => ({
+    formWorkflowUnique: uniqueIndex('form_workflow_unique').on(
+      table.formKey,
+      table.workflowKey,
+    ),
+  }),
+);

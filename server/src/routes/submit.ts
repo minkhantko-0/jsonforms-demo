@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Context } from 'hono';
 import { jsonSchemaToZod } from 'json-schema-to-zod';
 import { z } from 'zod';
@@ -103,7 +104,10 @@ export const submitHandler = async (c: Context) => {
         );
 
         if (!workflowResponse.ok) {
-          throw new Error('Failed to start workflow');
+          const bodyText = await workflowResponse.text();
+          throw new Error(
+            `Failed to start workflow: ${workflowResponse.status} ${workflowResponse.statusText}${bodyText ? ` - ${bodyText}` : ''}`,
+          );
         }
 
         const workflowResult = await workflowResponse.json();

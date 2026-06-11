@@ -35,6 +35,7 @@ export const submitHandler = async (c: Context) => {
     let workflowId: string | undefined;
     let refId: string | undefined;
     let createdBy: string | undefined;
+    let instanceId: string | undefined;
     let formData: FormData | null = null;
 
     if (contentType.includes('multipart/form-data')) {
@@ -44,6 +45,7 @@ export const submitHandler = async (c: Context) => {
       workflowId = formData.get('workflowId') as string | undefined;
       refId = formData.get('refId') as string | undefined;
       createdBy = formData.get('createdBy') as string | undefined;
+      instanceId = formData.get('instanceId') as string | undefined;
 
       // Add file field placeholders for validation
       for (const [key, value] of formData.entries()) {
@@ -53,6 +55,7 @@ export const submitHandler = async (c: Context) => {
           key !== 'workflowId' &&
           key !== 'refId' &&
           key !== 'createdBy' &&
+          key !== 'instanceId' &&
           value instanceof File
         ) {
           data[key] = value.name;
@@ -65,6 +68,7 @@ export const submitHandler = async (c: Context) => {
       workflowId = body.workflowId;
       refId = body.refId;
       createdBy = body.createdBy;
+      instanceId = body.instanceId;
     }
 
     const zodSchemaString = jsonSchemaToZod(schema);
@@ -83,8 +87,9 @@ export const submitHandler = async (c: Context) => {
       'Form data validated and accepted for processing',
     );
 
-    // If workflow info provided, start workflow
-    if (workflowId && refId && createdBy) {
+    // Simulator runtime may submit against an already-started workflow instance.
+    // Only start a new workflow when no existing instanceId is supplied.
+    if (!instanceId && workflowId && refId && createdBy) {
       try {
         const workflowResponse = await fetch(
           `${process.env.WORKFLOW_API_URL || 'http://localhost:3002'}/api/v1/workflows/start`,
@@ -130,6 +135,13 @@ export const submitHandler = async (c: Context) => {
           workflowError: workflowError.message,
         });
       }
+    }
+
+    if (instanceId) {
+      await createNotification(
+        'Workflow Submission Received',
+        `Form submitted for existing workflow instance ${instanceId}`,
+      );
     }
 
     await new Promise(resolve => setTimeout(resolve, 3000));
